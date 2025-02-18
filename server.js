@@ -75,7 +75,7 @@ app.post('/resetGame', (req, res) => {
 
 
 // 处理移动请求
-app.post('/move', (req, res) => {
+app.post('/move', async (req, res) => {
   const { action } = req.body;
   let result = {
     success: false,
@@ -122,15 +122,19 @@ app.post('/move', (req, res) => {
       mainWindow.webContents.send('showToast', result.message);
     }
   }
-  if (result.monsterHit || result.reachedExit) {
-    setTimeout(async () => {
-      mainWindow.webContents.send('resetGame');
-    }, 2000);
-  }
-
-  res.json({
-    ...result,
-    gameState: renderState
+  // if (result.monsterHit || result.reachedExit) {
+  //   setTimeout(async () => {
+  //     mainWindow.webContents.send('resetGame');
+  //   }, 2000);
+  // }
+  await new Promise(resolve => {
+    setTimeout(() => {
+      res.json({
+        ...result,
+        gameState: renderState
+      });
+      resolve();
+    }, 1000);
   });
 });
 

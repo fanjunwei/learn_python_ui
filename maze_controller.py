@@ -37,6 +37,7 @@ class MazeController:
 
 
 controller = MazeController()
+controller.reset_game()
 
 
 def example_usage():
