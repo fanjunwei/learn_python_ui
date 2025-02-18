@@ -3,12 +3,15 @@ class MazeGame {
     constructor() {
         this.initializeControls();
         ipcRenderer.on('renderGameState', (event, gameState) => {
+            console.log('message:renderGameState', gameState);
             this.renderGameState(gameState);
         });
         ipcRenderer.on('showToast', (event, message) => {
+            console.log('message:showToast', message);
             this.showToast(message);
         });
         ipcRenderer.on('resetGame', () => {
+            console.log('message:resetGame');
             this.resetGame();
         });
     }

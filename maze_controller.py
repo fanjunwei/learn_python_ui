@@ -41,20 +41,21 @@ class MazeController:
         return response.json()
 
 
-def example_usage():
-    # 创建控制器实例
-    controller = MazeController()
+controller = MazeController()
 
+
+def example_usage():
+    # 获取初始游戏状态
     # 获取初始游戏状态
     state = controller.get_game_state()
     print("初始状态:", state)
 
     # 示例操作序列
     actions = [
+        ("右转", controller.turn_right),
         ("向前", controller.move_forward),
         ("左转", controller.turn_left),
         ("向前", controller.move_forward),
-        ("右转", controller.turn_right),
         ("向前", controller.move_forward),
     ]
 

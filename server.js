@@ -129,7 +129,7 @@ app.post('/move', (req, res) => {
     setTimeout(() => resetGameState(defaultMazeConfig), 2000);
   }
   if (result.success) {
-    mainWindow.webContents.send('renderGameState', result.gameState);
+    mainWindow.webContents.send('renderGameState', renderState);
     if (result.message) {
       mainWindow.webContents.send('showToast', result.message);
     }
