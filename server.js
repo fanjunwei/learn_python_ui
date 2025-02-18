@@ -21,6 +21,72 @@ let gameState = {
   exit: { x: 0, y: 0 }
 };
 
+// Socket连接管理
+let activeConnections = new Set();
+
+io.on('connection', (socket) => {
+  console.log('新的客户端连接');
+  activeConnections.add(socket);
+
+  socket.on('disconnect', () => {
+    console.log('客户端断开连接');
+    activeConnections.delete(socket);
+  });
+});
+
+// 广播游戏状态更新
+function broadcastGameState(renderState, message = '') {
+  const fullState = {
+    gameState: renderState,
+    message: message
+  };
+  
+  activeConnections.forEach(socket => {
+    socket.emit('gameStateUpdate', fullState);
+  });
+}
+
+// 显示Toast消息
+function showToast(message) {
+  activeConnections.forEach(socket => {
+    socket.emit('showToast', { message });
+  });
+}
+
+// 渲染控制API
+app.post('/render', (req, res) => {
+  const { command } = req.body;
+  switch (command) {
+    case 'showToast':
+      showToast(req.body.message);
+      break;
+    case 'updateState':
+      broadcastGameState(generateRenderState(), req.body.message);
+      break;
+    default:
+      return res.status(400).json({ success: false, message: '未知的渲染命令' });
+  }
+  res.json({ success: true });
+});
+
+// 示例迷宫配置
+const defaultMazeConfig = {
+  maze: [
+    [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
+    [{ walkable: true }, { walkable: false }, { walkable: true }, { walkable: false }, { walkable: true }],
+    [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
+    [{ walkable: true }, { walkable: false }, { walkable: true }, { walkable: false }, { walkable: true }],
+    [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }]
+  ],
+  start: { x: 0, y: 0 },
+  blueGems: [{ x: 2, y: 2 }, { x: 4, y: 0 }, { x: 0, y: 4 }],
+  redGems: [{ x: 0, y: 2 }, { x: 2, y: 0 }, { x: 4, y: 4 }],
+  monsters: [{ x: 2, y: 1 }, { x: 2, y: 3 }],
+  exit: { x: 4, y: 2 },
+  requiredBlueGems: 3,
+  requiredRedGems: 3
+};
+
 // 添加CORS支持
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -41,27 +107,32 @@ app.get('/getGameState', (req, res) => {
   });
 });
 
+// 重置游戏
+app.post('/resetGame', (req, res) => {
+  const config = req.body.config || defaultMazeConfig;
+  resetGameState(config);
+  
+  const renderState = generateRenderState();
+  broadcastGameState(renderState, '游戏已重置');
+  
+  res.json({
+    success: true,
+    message: '游戏已重置',
+    gameState: renderState
+  });
+});
+
 // 设置迷宫配置
 app.post('/setMazeConfig', (req, res) => {
   const config = req.body;
+  resetGameState(config);
   
-  // 使用深拷贝确保数据独立
-  gameState.maze = JSON.parse(JSON.stringify(config.maze));
-  gameState.playerPosition = { ...config.start };
-  gameState.blueGems = JSON.parse(JSON.stringify(config.blueGems));
-  gameState.redGems = JSON.parse(JSON.stringify(config.redGems));
-  gameState.monsters = JSON.parse(JSON.stringify(config.monsters));
-  gameState.exit = { ...config.exit };
-  gameState.requiredBlueGems = config.requiredBlueGems;
-  gameState.requiredRedGems = config.requiredRedGems;
-  gameState.collectedBlueGems = 0;
-  gameState.collectedRedGems = 0;
-  gameState.exitOpen = false;
-  gameState.playerDirection = 0;
-
   const renderState = generateRenderState();
+  broadcastGameState(renderState, '迷宫配置已更新');
+  
   res.json({ 
     success: true,
+    message: '迷宫配置已更新',
     gameState: renderState
   });
 });
@@ -91,25 +162,50 @@ app.post('/move', (req, res) => {
       break;
   }
 
-  // 生成渲染状态
   const renderState = generateRenderState();
   
-  // 添加提示消息
   if (result.hitWall) {
     result.message = '撞墙了！';
   } else if (result.gemCollected) {
     result.message = `获得${result.gemType === 'blue' ? '蓝' : '红'}宝石！`;
   } else if (result.monsterHit) {
     result.message = '你被怪物抓住了！游戏结束！';
+    setTimeout(() => {
+      resetGameState(defaultMazeConfig);
+      broadcastGameState(generateRenderState(), '游戏已重置');
+    }, 2000);
   } else if (result.reachedExit) {
     result.message = '恭喜你完成迷宫！';
+    setTimeout(() => {
+      resetGameState(defaultMazeConfig);
+      broadcastGameState(generateRenderState(), '游戏已重置');
+    }, 2000);
   }
+
+  // 广播状态更新
+  broadcastGameState(renderState, result.message);
 
   res.json({
     ...result,
     gameState: renderState
   });
 });
+
+// 重置游戏状态
+function resetGameState(config) {
+  gameState.maze = JSON.parse(JSON.stringify(config.maze));
+  gameState.playerPosition = { ...config.start };
+  gameState.blueGems = JSON.parse(JSON.stringify(config.blueGems));
+  gameState.redGems = JSON.parse(JSON.stringify(config.redGems));
+  gameState.monsters = JSON.parse(JSON.stringify(config.monsters));
+  gameState.exit = { ...config.exit };
+  gameState.requiredBlueGems = config.requiredBlueGems;
+  gameState.requiredRedGems = config.requiredRedGems;
+  gameState.collectedBlueGems = 0;
+  gameState.collectedRedGems = 0;
+  gameState.exitOpen = false;
+  gameState.playerDirection = 0;
+}
 
 // 生成渲染状态
 function generateRenderState() {
