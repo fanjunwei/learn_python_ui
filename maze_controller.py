@@ -12,15 +12,16 @@ class MazeController:
 
     def load_config(self) -> Dict[str, Any]:
         """加载TOML配置文件"""
-        config_path = Path(__file__).parent / "maze_config.toml"
-        try:
-            with open(config_path, "rb") as f:
-                config = tomli.load(f)
-                print(config)
-            return self.convert_config_format(config)
-        except Exception as e:
-            print(f"加载配置文件失败: {e}")
-            return None
+        configs_dir = Path(__file__).parent / "configs"
+        for config_path in configs_dir.glob("*.toml"):
+            try:
+                with open(config_path, "rb") as f:
+                    config = tomli.load(f)
+                    print(config)
+                    return self.convert_config_format(config)
+            except Exception as e:
+                print(f"加载配置文件失败: {e}")
+                return None
 
     def convert_config_format(self, toml_config: Dict[str, Any]) -> Dict[str, Any]:
         """将TOML配置转换为游戏所需的格式"""
