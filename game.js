@@ -1,6 +1,16 @@
+const { ipcRenderer } = require('electron');
 class MazeGame {
     constructor() {
         this.initializeControls();
+        ipcRenderer.on('renderGameState', (event, gameState) => {
+            this.renderGameState(gameState);
+        });
+        ipcRenderer.on('showToast', (event, message) => {
+            this.showToast(message);
+        });
+        ipcRenderer.on('resetGame', () => {
+            this.resetGame();
+        });
     }
 
     // 显示toast提示
@@ -100,12 +110,7 @@ class MazeGame {
             });
 
             const result = await response.json();
-            if (result.success) {
-                this.renderGameState(result.gameState);
-                if (result.message) {
-                    this.showToast(result.message);
-                }
-            }
+         
         } catch (error) {
             console.error('转向操作失败:', error);
         }
@@ -124,17 +129,6 @@ class MazeGame {
             });
 
             const result = await response.json();
-            this.renderGameState(result.gameState);
-            
-            if (result.message) {
-                this.showToast(result.message);
-            }
-
-            if (result.monsterHit || result.reachedExit) {
-                setTimeout(async () => {
-                    await this.resetGame();
-                }, 2000);
-            }
         } catch (error) {
             console.error('移动操作失败:', error);
         }

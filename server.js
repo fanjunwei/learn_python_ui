@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
+let mainWindow;
 
 app.use(express.json());
 
@@ -63,7 +64,7 @@ app.get('/getGameState', (req, res) => {
 app.post('/resetGame', (req, res) => {
   const config = req.body.config || defaultMazeConfig;
   resetGameState(config);
-  
+
   const renderState = generateRenderState();
   res.json({
     success: true,
@@ -76,9 +77,9 @@ app.post('/resetGame', (req, res) => {
 app.post('/setMazeConfig', (req, res) => {
   const config = req.body;
   resetGameState(config);
-  
+
   const renderState = generateRenderState();
-  res.json({ 
+  res.json({
     success: true,
     message: '迷宫配置已更新',
     gameState: renderState
@@ -98,7 +99,7 @@ app.post('/move', (req, res) => {
     message: ''
   };
 
-  switch(action) {
+  switch (action) {
     case 'forward':
       result = moveForward();
       break;
@@ -112,7 +113,7 @@ app.post('/move', (req, res) => {
 
   // 生成渲染状态
   const renderState = generateRenderState();
-  
+
   // 添加提示消息
   if (result.hitWall) {
     result.message = '撞墙了！';
@@ -126,6 +127,17 @@ app.post('/move', (req, res) => {
     result.message = '恭喜你完成迷宫！';
     // 自动重置游戏
     setTimeout(() => resetGameState(defaultMazeConfig), 2000);
+  }
+  if (result.success) {
+    mainWindow.webContents.send('renderGameState', result.gameState);
+    if (result.message) {
+      mainWindow.webContents.send('showToast', result.message);
+    }
+  }
+  if (result.monsterHit || result.reachedExit) {
+    setTimeout(async () => {
+      mainWindow.webContents.send('resetGame');
+    }, 2000);
   }
 
   res.json({
@@ -207,7 +219,7 @@ function turnRight() {
 // 获取下一个位置
 function getNextPosition() {
   const { x, y } = gameState.playerPosition;
-  switch(gameState.playerDirection) {
+  switch (gameState.playerDirection) {
     case 0: return { x, y: y - 1 }; // 上
     case 1: return { x: x + 1, y }; // 右
     case 2: return { x, y: y + 1 }; // 下
@@ -217,9 +229,9 @@ function getNextPosition() {
 
 // 检查移动是否有效
 function isValidMove(position) {
-  return gameState.maze[position.y] && 
-         gameState.maze[position.y][position.x] && 
-         gameState.maze[position.y][position.x].walkable;
+  return gameState.maze[position.y] &&
+    gameState.maze[position.y][position.x] &&
+    gameState.maze[position.y][position.x].walkable;
 }
 
 // 检查碰撞
@@ -249,14 +261,14 @@ function checkCollisions(result) {
 
   // 检查是否开启出口
   if (gameState.collectedBlueGems >= gameState.requiredBlueGems &&
-      gameState.collectedRedGems >= gameState.requiredRedGems) {
+    gameState.collectedRedGems >= gameState.requiredRedGems) {
     gameState.exitOpen = true;
   }
 
   // 检查出口
-  if (gameState.exitOpen && 
-      pos.x === gameState.exit.x && 
-      pos.y === gameState.exit.y) {
+  if (gameState.exitOpen &&
+    pos.x === gameState.exit.x &&
+    pos.y === gameState.exit.y) {
     result.reachedExit = true;
   }
 
@@ -264,8 +276,15 @@ function checkCollisions(result) {
 }
 
 const port = 3000;
-http.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
 
-module.exports = app; 
+function startServer(window) {
+  mainWindow = window;
+  http.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+  });
+}
+
+module.exports = {
+  startServer,
+  app
+}

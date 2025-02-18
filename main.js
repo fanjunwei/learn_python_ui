@@ -1,9 +1,9 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const server = require('./server');
-
+const { startServer, app: serverApp } = require('./server');
+let mainWindow;
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
@@ -13,6 +13,7 @@ function createWindow() {
   });
 
   mainWindow.loadFile('index.html');
+  startServer(mainWindow);
 }
 
 app.whenReady().then(() => {
@@ -21,6 +22,7 @@ app.whenReady().then(() => {
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+
 });
 
 app.on('window-all-closed', function () {
