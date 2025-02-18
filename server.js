@@ -7,6 +7,7 @@ app.use(express.json());
 
 // 游戏状态
 let gameState = {
+  maze: [],
   playerPosition: { x: 0, y: 0 },
   playerDirection: 0, // 0: 上, 1: 右, 2: 下, 3: 左
   blueGems: [],
@@ -17,7 +18,6 @@ let gameState = {
   requiredRedGems: 3,
   monsters: [],
   exitOpen: false,
-  maze: [],
   exit: { x: 0, y: 0 }
 };
 
@@ -32,7 +32,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// 设置迷宫配置的API
+// 获取游戏状态
+app.get('/getGameState', (req, res) => {
+  const renderState = generateRenderState();
+  res.json({
+    success: true,
+    gameState: renderState
+  });
+});
+
+// 设置迷宫配置
 app.post('/setMazeConfig', (req, res) => {
   const config = req.body;
   
@@ -45,14 +54,16 @@ app.post('/setMazeConfig', (req, res) => {
   gameState.exit = { ...config.exit };
   gameState.requiredBlueGems = config.requiredBlueGems;
   gameState.requiredRedGems = config.requiredRedGems;
-  
-  // 重置状态
   gameState.collectedBlueGems = 0;
   gameState.collectedRedGems = 0;
   gameState.exitOpen = false;
   gameState.playerDirection = 0;
 
-  res.json({ success: true });
+  const renderState = generateRenderState();
+  res.json({ 
+    success: true,
+    gameState: renderState
+  });
 });
 
 // 处理移动请求
@@ -64,7 +75,8 @@ app.post('/move', (req, res) => {
     gemCollected: false,
     gemType: null,
     monsterHit: false,
-    reachedExit: false
+    reachedExit: false,
+    message: ''
   };
 
   switch(action) {
@@ -79,8 +91,43 @@ app.post('/move', (req, res) => {
       break;
   }
 
-  res.json(result);
+  // 生成渲染状态
+  const renderState = generateRenderState();
+  
+  // 添加提示消息
+  if (result.hitWall) {
+    result.message = '撞墙了！';
+  } else if (result.gemCollected) {
+    result.message = `获得${result.gemType === 'blue' ? '蓝' : '红'}宝石！`;
+  } else if (result.monsterHit) {
+    result.message = '你被怪物抓住了！游戏结束！';
+  } else if (result.reachedExit) {
+    result.message = '恭喜你完成迷宫！';
+  }
+
+  res.json({
+    ...result,
+    gameState: renderState
+  });
 });
+
+// 生成渲染状态
+function generateRenderState() {
+  return {
+    maze: gameState.maze,
+    playerPosition: gameState.playerPosition,
+    playerDirection: gameState.playerDirection,
+    blueGems: gameState.blueGems,
+    redGems: gameState.redGems,
+    monsters: gameState.monsters,
+    exit: gameState.exit,
+    exitOpen: gameState.exitOpen,
+    collectedBlueGems: gameState.collectedBlueGems,
+    collectedRedGems: gameState.collectedRedGems,
+    requiredBlueGems: gameState.requiredBlueGems,
+    requiredRedGems: gameState.requiredRedGems
+  };
+}
 
 // 移动前进
 function moveForward() {
@@ -91,8 +138,7 @@ function moveForward() {
     gemCollected: false,
     gemType: null,
     monsterHit: false,
-    reachedExit: false,
-    newPosition: null
+    reachedExit: false
   };
 
   if (!isValidMove(nextPosition)) {
@@ -102,11 +148,9 @@ function moveForward() {
 
   gameState.playerPosition = nextPosition;
   result.success = true;
-  result.newPosition = nextPosition;
 
-  // 检查碰撞并合并结果
-  const collisionResult = checkCollisions();
-  return { ...result, ...collisionResult };
+  // 检查碰撞
+  return checkCollisions(result);
 }
 
 // 左转
@@ -140,9 +184,8 @@ function isValidMove(position) {
 }
 
 // 检查碰撞
-function checkCollisions() {
+function checkCollisions(result) {
   const pos = gameState.playerPosition;
-  const result = { success: true };
 
   // 检查宝石
   const blueGemIndex = gameState.blueGems.findIndex(g => g.x === pos.x && g.y === pos.y);
@@ -165,17 +208,17 @@ function checkCollisions() {
     result.monsterHit = true;
   }
 
+  // 检查是否开启出口
+  if (gameState.collectedBlueGems >= gameState.requiredBlueGems &&
+      gameState.collectedRedGems >= gameState.requiredRedGems) {
+    gameState.exitOpen = true;
+  }
+
   // 检查出口
   if (gameState.exitOpen && 
       pos.x === gameState.exit.x && 
       pos.y === gameState.exit.y) {
     result.reachedExit = true;
-  }
-
-  // 检查是否开启出口
-  if (gameState.collectedBlueGems >= gameState.requiredBlueGems &&
-      gameState.collectedRedGems >= gameState.requiredRedGems) {
-    gameState.exitOpen = true;
   }
 
   return result;

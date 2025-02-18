@@ -1,25 +1,10 @@
 class MazeGame {
     constructor() {
-        // 使用深拷贝初始化所有数组和对象
-        this.maze = [];
-        this.playerPosition = { x: 0, y: 0 };
-        this.playerDirection = 0; // 0: 上, 1: 右, 2: 下, 3: 左
-        this.blueGems = [];
-        this.redGems = [];
-        this.monsters = [];
-        this.exit = { x: 0, y: 0 };
-        this.exitOpen = false;
-        this.collectedBlueGems = 0;
-        this.collectedRedGems = 0;
-        this.requiredBlueGems = 3;
-        this.requiredRedGems = 3;
-
         this.initializeControls();
     }
 
     // 显示toast提示
     showToast(message) {
-        // 移除现有的toast
         const existingToast = document.querySelector('.toast');
         if (existingToast) {
             document.body.removeChild(existingToast);
@@ -30,7 +15,6 @@ class MazeGame {
         toast.textContent = message;
         document.body.appendChild(toast);
 
-        // 动画结束后移除toast
         toast.addEventListener('animationend', () => {
             if (document.body.contains(toast)) {
                 document.body.removeChild(toast);
@@ -44,101 +28,119 @@ class MazeGame {
         document.getElementById('turnRight').addEventListener('click', () => this.turn('right'));
     }
 
-    async turn(direction) {
-        const response = await fetch('http://localhost:3000/move', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                action: direction === 'left' ? 'turnLeft' : 'turnRight'
-            }),
-        });
+    // 渲染游戏状态
+    renderGameState(gameState) {
+        const mazeElement = document.getElementById('maze');
+        mazeElement.style.gridTemplateColumns = `repeat(${gameState.maze[0].length}, 40px)`;
+        mazeElement.innerHTML = '';
 
-        const result = await response.json();
-        if (result.success) {
-            this.playerDirection = direction === 'left' ? 
-                (this.playerDirection + 3) % 4 : 
-                (this.playerDirection + 1) % 4;
-            this.renderMaze();
+        for (let y = 0; y < gameState.maze.length; y++) {
+            for (let x = 0; x < gameState.maze[y].length; x++) {
+                const cell = document.createElement('div');
+                cell.className = `cell ${gameState.maze[y][x].walkable ? '' : 'wall'}`;
+
+                // 添加玩家
+                if (x === gameState.playerPosition.x && y === gameState.playerPosition.y) {
+                    const player = document.createElement('div');
+                    player.className = 'player';
+                    player.style.transform = `translate(-50%, -50%) rotate(${gameState.playerDirection * 90}deg)`;
+                    cell.appendChild(player);
+                }
+
+                // 添加蓝宝石
+                if (gameState.blueGems.some(g => g.x === x && g.y === y)) {
+                    const gem = document.createElement('div');
+                    gem.className = 'gem blue';
+                    cell.appendChild(gem);
+                }
+
+                // 添加红宝石
+                if (gameState.redGems.some(g => g.x === x && g.y === y)) {
+                    const gem = document.createElement('div');
+                    gem.className = 'gem red';
+                    cell.appendChild(gem);
+                }
+
+                // 添加怪物
+                if (gameState.monsters.some(m => m.x === x && m.y === y)) {
+                    const monster = document.createElement('div');
+                    monster.className = 'monster';
+                    cell.appendChild(monster);
+                }
+
+                // 添加出口
+                if (x === gameState.exit.x && y === gameState.exit.y) {
+                    const exit = document.createElement('div');
+                    exit.className = `exit ${gameState.exitOpen ? 'open' : ''}`;
+                    cell.appendChild(exit);
+                }
+
+                mazeElement.appendChild(cell);
+            }
+        }
+
+        // 更新状态栏
+        document.getElementById('blueGemCount').textContent = gameState.collectedBlueGems;
+        document.getElementById('redGemCount').textContent = gameState.collectedRedGems;
+        document.getElementById('requiredBlueGems').textContent = gameState.requiredBlueGems;
+        document.getElementById('requiredRedGems').textContent = gameState.requiredRedGems;
+        document.getElementById('exitStatus').textContent = gameState.exitOpen ? '开启' : '关闭';
+    }
+
+    async turn(direction) {
+        try {
+            const response = await fetch('http://localhost:3000/move', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: direction === 'left' ? 'turnLeft' : 'turnRight'
+                }),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                this.renderGameState(result.gameState);
+                if (result.message) {
+                    this.showToast(result.message);
+                }
+            }
+        } catch (error) {
+            console.error('转向操作失败:', error);
         }
     }
 
     async move() {
-        const response = await fetch('http://localhost:3000/move', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                action: 'forward'
-            }),
-        });
+        try {
+            const response = await fetch('http://localhost:3000/move', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'forward'
+                }),
+            });
 
-        const result = await response.json();
-        if (result.success) {
-            if (result.newPosition) {
-                this.playerPosition = { ...result.newPosition };
+            const result = await response.json();
+            this.renderGameState(result.gameState);
+            
+            if (result.message) {
+                this.showToast(result.message);
             }
 
-            if (result.gemCollected) {
-                if (result.gemType === 'blue') {
-                    this.collectedBlueGems++;
-                    this.removeGem(this.playerPosition, 'blue');
-                    this.showToast('获得蓝宝石！');
-                } else {
-                    this.collectedRedGems++;
-                    this.removeGem(this.playerPosition, 'red');
-                    this.showToast('获得红宝石！');
-                }
-            }
-
-            if (result.monsterHit) {
-                this.showToast('你被怪物抓住了！游戏结束！');
+            if (result.monsterHit || result.reachedExit) {
                 setTimeout(async () => {
                     await this.resetGame();
-                    this.renderMaze();  // 确保重置后重新渲染
                 }, 2000);
-                return;
             }
-
-            if (result.reachedExit) {
-                this.showToast('恭喜你完成迷宫！');
-                setTimeout(async () => {
-                    await this.resetGame();
-                    this.renderMaze();  // 确保重置后重新渲染
-                }, 2000);
-                return;
-            }
-
-            this.renderMaze();
-        } else if (result.hitWall) {
-            this.showToast('撞墙了！');
+        } catch (error) {
+            console.error('移动操作失败:', error);
         }
     }
-
-    getNextPosition() {
-        const { x, y } = this.playerPosition;
-        switch(this.playerDirection) {
-            case 0: return { x, y: y - 1 }; // 上
-            case 1: return { x: x + 1, y }; // 右
-            case 2: return { x, y: y + 1 }; // 下
-            case 3: return { x: x - 1, y }; // 左
-        }
-    }
-
-    removeGem(position, type) {
-        const gems = type === 'blue' ? this.blueGems : this.redGems;
-        if (type === 'blue') {
-            this.blueGems = this.blueGems.filter(g => g.x !== position.x || g.y !== position.y);
-        } else {
-            this.redGems = this.redGems.filter(g => g.x !== position.x || g.y !== position.y);
-        }
-    }
-
 
     async resetGame() {
-        // 先发送重置请求到服务器
         try {
             const response = await fetch('http://localhost:3000/setMazeConfig', {
                 method: 'POST',
@@ -148,155 +150,20 @@ class MazeGame {
                 body: JSON.stringify(exampleMazeConfig)
             });
 
-            if (!response.ok) {
-                console.error('重置游戏状态失败');
-                return;
-            }
-        } catch (error) {
-            console.error('重置游戏状态时出错:', error);
-            return;
-        }
-
-        // 重置玩家状态
-        this.playerPosition = { ...exampleMazeConfig.start };
-        this.playerDirection = 0;
-        
-        // 重置宝石状态（使用深拷贝）
-        this.blueGems = JSON.parse(JSON.stringify(exampleMazeConfig.blueGems));
-        this.redGems = JSON.parse(JSON.stringify(exampleMazeConfig.redGems));
-        this.collectedBlueGems = 0;
-        this.collectedRedGems = 0;
-        
-        // 重置出口状态
-        this.exitOpen = false;
-        
-        // 重置怪物位置（使用深拷贝）
-        this.monsters = JSON.parse(JSON.stringify(exampleMazeConfig.monsters));
-        
-        // 重置迷宫状态（使用深拷贝）
-        this.maze = JSON.parse(JSON.stringify(exampleMazeConfig.maze));
-        
-        // 重置其他状态
-        this.exit = { ...exampleMazeConfig.exit };
-        this.requiredBlueGems = exampleMazeConfig.requiredBlueGems;
-        this.requiredRedGems = exampleMazeConfig.requiredRedGems;
-        
-        // 重新渲染整个迷宫
-        this.renderMaze();
-    }
-
-    // 设置迷宫配置
-    async setMazeConfig(config) {
-        // 先发送配置到服务器
-        try {
-            const response = await fetch('http://localhost:3000/setMazeConfig', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(config)
-            });
-
             const result = await response.json();
-            if (!result.success) {
-                console.error('设置迷宫配置失败');
-                return;
+            if (result.success) {
+                this.renderGameState(result.gameState);
             }
         } catch (error) {
-            console.error('发送迷宫配置时出错:', error);
-            return;
-        }
-
-        // 设置客户端状态
-        this.maze = config.maze;
-        this.playerPosition = config.start;
-        this.blueGems = config.blueGems;
-        this.redGems = config.redGems;
-        this.monsters = config.monsters;
-        this.exit = config.exit;
-        this.requiredBlueGems = config.requiredBlueGems;
-        this.requiredRedGems = config.requiredRedGems;
-        this.collectedBlueGems = 0;
-        this.collectedRedGems = 0;
-        this.exitOpen = false;
-        this.playerDirection = 0;
-
-        this.renderMaze();
-    }
-    
-    renderMaze() {
-        console.log('开始渲染迷宫...');
-        const mazeElement = document.getElementById('maze');
-        mazeElement.style.gridTemplateColumns = `repeat(${this.maze[0].length}, 40px)`;
-        mazeElement.innerHTML = '';
-
-        for (let y = 0; y < this.maze.length; y++) {
-            for (let x = 0; x < this.maze[y].length; x++) {
-                const cell = document.createElement('div');
-                cell.className = `cell ${this.maze[y][x].walkable ? '' : 'wall'}`;
-
-                // 添加玩家
-                if (x === this.playerPosition.x && y === this.playerPosition.y) {
-                    const player = document.createElement('div');
-                    player.className = 'player';
-                    // 根据玩家方向设置旋转角度
-                    player.style.transform = `translate(-50%, -50%) rotate(${this.playerDirection * 90}deg)`;
-                    cell.appendChild(player);
-                }
-
-                // 添加蓝宝石
-                if (this.blueGems.some(g => g.x === x && g.y === y)) {
-                    const gem = document.createElement('div');
-                    gem.className = 'gem blue';
-                    cell.appendChild(gem);
-                }
-
-                // 添加红宝石
-                if (this.redGems.some(g => g.x === x && g.y === y)) {
-                    const gem = document.createElement('div');
-                    gem.className = 'gem red';
-                    cell.appendChild(gem);
-                }
-
-                // 添加怪物
-                if (this.monsters.some(m => m.x === x && m.y === y)) {
-                    const monster = document.createElement('div');
-                    monster.className = 'monster';
-                    cell.appendChild(monster);
-                }
-
-                // 添加出口
-                if (x === this.exit.x && y === this.exit.y) {
-                    const exit = document.createElement('div');
-                    exit.className = `exit ${this.exitOpen ? 'open' : ''}`;
-                    cell.appendChild(exit);
-                }
-
-                mazeElement.appendChild(cell);
-            }
-        }
-
-        // 更新状态栏
-        document.getElementById('blueGemCount').textContent = this.collectedBlueGems;
-        document.getElementById('redGemCount').textContent = this.collectedRedGems;
-        document.getElementById('requiredBlueGems').textContent = this.requiredBlueGems;
-        document.getElementById('requiredRedGems').textContent = this.requiredRedGems;
-
-        // 更新出口状态
-        const exitStatus = document.getElementById('exitStatus');
-        if (this.collectedBlueGems >= this.requiredBlueGems && 
-            this.collectedRedGems >= this.requiredRedGems) {
-            this.exitOpen = true;
-            exitStatus.textContent = '开启';
-            document.querySelector('.exit').classList.add('open');
+            console.error('重置游戏失败:', error);
         }
     }
 }
 
-// 创建游戏实例并初始化
+// 创建游戏实例
 const game = new MazeGame();
 
-// 设置示例迷宫配置
+// 示例迷宫配置
 const exampleMazeConfig = {
     maze: [
         [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
@@ -316,5 +183,5 @@ const exampleMazeConfig = {
 
 // 等待DOM加载完成后初始化游戏
 document.addEventListener('DOMContentLoaded', async () => {
-    await game.setMazeConfig(exampleMazeConfig);
+    await game.resetGame();
 }); 
