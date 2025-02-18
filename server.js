@@ -53,26 +53,37 @@ app.use((req, res, next) => {
 
 // 获取游戏状态
 app.get('/getGameState', (req, res) => {
-  const renderState = generateRenderState();
+  console.log('收到获取游戏状态请求')
+  const renderState = generateRenderState()
+  console.log('生成的游戏状态:', renderState)
   res.json({
     success: true,
     gameState: renderState
-  });
-});
+  })
+})
 
 // 重置游戏
 app.post('/resetGame', (req, res) => {
-  const config = req.body.config || defaultMazeConfig;
-  resetGameState(config);
+  console.log('收到重置游戏请求')
+  const config = req.body.config || defaultMazeConfig
+  resetGameState(config)
 
-  const renderState = generateRenderState();
+  const renderState = generateRenderState()
+  console.log('重置后的游戏状态:', renderState)
+  
+  if (mainWindow) {
+    console.log('发送游戏状态到主窗口')
+    mainWindow.webContents.send('renderGameState', renderState)
+  } else {
+    console.warn('主窗口未初始化')
+  }
+
   res.json({
     success: true,
     message: '游戏已重置',
     gameState: renderState
-  });
-});
-
+  })
+})
 
 // 处理移动请求
 app.post('/move', async (req, res) => {

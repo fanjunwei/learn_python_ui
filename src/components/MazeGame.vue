@@ -9,29 +9,31 @@
         出口状态: <span>{{ gameState.exitOpen ? '开启' : '关闭' }}</span>
       </div>
     </div>
-    <div class="maze" :style="mazeGridStyle">
-      <div v-for="(row, y) in gameState.maze" :key="y" class="maze-row">
-        <div v-for="(cell, x) in row" :key="x" 
-             class="cell" 
-             :class="{ 'wall': !cell.walkable }">
-          <!-- 玩家 -->
-          <div v-if="isPlayerPosition(x, y)" 
-               class="player"
-               :style="playerRotationStyle">
-          </div>
-          <!-- 蓝宝石 -->
-          <div v-if="hasBluGem(x, y)" class="gem blue"></div>
-          <!-- 红宝石 -->
-          <div v-if="hasRedGem(x, y)" class="gem red"></div>
-          <!-- 怪物 -->
-          <div v-if="hasMonster(x, y)" class="monster"></div>
-          <!-- 出口 -->
-          <div v-if="isExit(x, y)" 
-               class="exit"
-               :class="{ 'open': gameState.exitOpen }">
+    <div id="maze" class="maze" :style="mazeGridStyle">
+      <template v-if="gameState.maze && gameState.maze.length > 0">
+        <div v-for="(row, y) in gameState.maze" :key="y" class="maze-row">
+          <div v-for="(cell, x) in row" :key="x" 
+               class="cell" 
+               :class="{ 'wall': !cell.walkable }">
+            <!-- 玩家 -->
+            <div v-if="isPlayerPosition(x, y)" 
+                 class="player"
+                 :style="playerRotationStyle">
+            </div>
+            <!-- 蓝宝石 -->
+            <div v-if="hasBluGem(x, y)" class="gem blue"></div>
+            <!-- 红宝石 -->
+            <div v-if="hasRedGem(x, y)" class="gem red"></div>
+            <!-- 怪物 -->
+            <div v-if="hasMonster(x, y)" class="monster"></div>
+            <!-- 出口 -->
+            <div v-if="isExit(x, y)" 
+                 class="exit"
+                 :class="{ 'open': gameState.exitOpen }">
+            </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
     <div class="controls">
       <button @click="turn('left')">左转</button>
@@ -67,9 +69,14 @@ const gameState = ref({
 const toast = ref('')
 
 // 计算属性
-const mazeGridStyle = computed(() => ({
-  gridTemplateColumns: `repeat(${gameState.value.maze[0]?.length || 0}, 40px)`
-}))
+const mazeGridStyle = computed(() => {
+  const cols = gameState.value.maze[0]?.length || 0
+  console.log('迷宫列数:', cols)
+  return cols ? {
+    gridTemplateColumns: `repeat(${cols}, 40px)`,
+    display: 'grid'
+  } : {}
+})
 
 const playerRotationStyle = computed(() => ({
   transform: `translate(-50%, -50%) rotate(${gameState.value.playerDirection * 90}deg)`
@@ -130,9 +137,34 @@ const showToast = (message) => {
   }, 2000)
 }
 
+// 初始化游戏
+const initGame = async () => {
+  try {
+    console.log('开始初始化游戏...')
+    const response = await fetch('http://localhost:3000/resetGame', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    const data = await response.json()
+    console.log('初始化游戏响应:', data)
+    if (data.success) {
+      console.log('更新游戏状态:', data.gameState)
+      gameState.value = data.gameState
+    }
+  } catch (error) {
+    console.error('初始化游戏失败:', error)
+  }
+}
+
 // 事件处理函数
 const handleRenderGameState = (event, state) => {
-  gameState.value = state
+  console.log('收到游戏状态更新:', state)
+  if (state && state.maze) {
+    console.log('迷宫数据:', state.maze)
+    gameState.value = state
+  } else {
+    console.warn('收到无效的游戏状态:', state)
+  }
 }
 
 const handleShowToast = (event, message) => {
@@ -140,17 +172,25 @@ const handleShowToast = (event, message) => {
 }
 
 // 监听服务器消息
-onMounted(() => {
+onMounted(async () => {
+  console.log('组件已挂载')
   ipcRenderer.on('renderGameState', handleRenderGameState)
   ipcRenderer.on('showToast', handleShowToast)
-
+  
   // 初始化游戏
-  fetch('http://localhost:3000/resetGame', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
-  }).catch(error => {
-    console.error('重置游戏失败:', error)
-  })
+  await initGame()
+  
+  // 获取当前游戏状态
+  try {
+    const response = await fetch('http://localhost:3000/getGameState')
+    const data = await response.json()
+    console.log('获取游戏状态响应:', data)
+    if (data.success) {
+      gameState.value = data.gameState
+    }
+  } catch (error) {
+    console.error('获取游戏状态失败:', error)
+  }
 })
 
 // 清理事件监听
@@ -163,5 +203,20 @@ onUnmounted(() => {
 <style scoped>
 .maze-row {
   display: contents;
+}
+
+.controls button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.controls button:hover {
+  background-color: #45a049;
+}
+
+.maze {
+  min-height: 200px;
+  min-width: 200px;
+  border: 1px solid #ccc;
 }
 </style> 

@@ -11,10 +11,9 @@ import MazeGame from './components/MazeGame.vue'
 <style scoped>
 .app {
   width: 100%;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
   background-color: #f0f0f0;
 }
 </style> 
