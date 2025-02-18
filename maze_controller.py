@@ -36,8 +36,68 @@ class MazeController:
         return response.json()
 
 
+defaultMazeConfig = {
+    "maze": [
+        [
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+        ],
+        [
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": False},
+            {"walkable": True},
+            {"walkable": True},
+        ],
+        [
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+        ],
+        [
+            {"walkable": True},
+            {"walkable": False},
+            {"walkable": True},
+            {"walkable": False},
+            {"walkable": True},
+            {"walkable": True},
+        ],
+        [
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+        ],
+        [
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+            {"walkable": True},
+        ],
+    ],
+    "start": {"x": 0, "y": 0},
+    "blueGems": [{"x": 2, "y": 2}, {"x": 4, "y": 0}, {"x": 0, "y": 4}],
+    "redGems": [{"x": 0, "y": 2}, {"x": 2, "y": 0}, {"x": 4, "y": 4}],
+    "monsters": [{"x": 2, "y": 1}, {"x": 2, "y": 3}],
+    "exit": {"x": 4, "y": 2},
+    "requiredBlueGems": 3,
+    "requiredRedGems": 3,
+}
+
 controller = MazeController()
-controller.reset_game()
+controller.reset_game(defaultMazeConfig)
 
 
 def example_usage():
