@@ -2,26 +2,11 @@
 <html>
 <head>
     <title>迷宫游戏</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-    <div class="game-container">
-        <div class="status-bar">
-            <div class="gem-counter">
-                <span>蓝宝石: <span id="blueGemCount">0</span>/<span id="requiredBlueGems">3</span></span>
-                <span>红宝石: <span id="redGemCount">0</span>/<span id="requiredRedGems">3</span></span>
-            </div>
-            <div class="exit-status">
-                出口状态: <span id="exitStatus">关闭</span>
-            </div>
-        </div>
-        <div id="maze" class="maze"></div>
-        <div class="controls">
-            <button id="turnLeft">左转</button>
-            <button id="moveForward">前进</button>
-            <button id="turnRight">右转</button>
-        </div>
-    </div>
-    <script src="game.js"></script>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html> 

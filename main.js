@@ -1,18 +1,28 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
-const { startServer, app: serverApp } = require('./server');
-let mainWindow;
+const { startServer } = require('./server');
+
+const isDev = process.env.NODE_ENV === 'development';
+const port = process.env.PORT || 5173;
+
 function createWindow() {
-  mainWindow = new BrowserWindow({
+  const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: false,
+      webSecurity: false  // 开发环境允许加载本地文件
     }
   });
 
-  mainWindow.loadFile('index.html');
+  if (isDev) {
+    mainWindow.loadURL(`http://localhost:${port}`);
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+  }
+
   startServer(mainWindow);
 }
 
@@ -22,7 +32,6 @@ app.whenReady().then(() => {
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
-
 });
 
 app.on('window-all-closed', function () {

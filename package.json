@@ -4,8 +4,11 @@
   "description": "一个基于Electron的迷宫游戏",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron:dev": "cross-env NODE_ENV=development concurrently \"vite\" \"electron .\"",
+    "electron:build": "vite build && electron-builder"
   },
   "keywords": [
     "maze",
@@ -17,6 +20,14 @@
   "dependencies": {
     "electron": "^28.3.3",
     "express": "^4.21.2",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "vue": "^3.4.15"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.3",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron-builder": "^24.9.1",
+    "vite": "^5.0.12"
   }
 }
