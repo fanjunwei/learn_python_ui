@@ -1,5 +1,6 @@
 class MazeGame {
     constructor() {
+        // 使用深拷贝初始化所有数组和对象
         this.maze = [];
         this.playerPosition = { x: 0, y: 0 };
         this.playerDirection = 0; // 0: 上, 1: 右, 2: 下, 3: 左
@@ -15,6 +16,7 @@ class MazeGame {
 
         this.initializeControls();
         this.updateUI();
+        // this.renderMaze();  // 使用renderMaze替代updateUI
     }
 
     // 显示toast提示
@@ -78,7 +80,7 @@ class MazeGame {
         const result = await response.json();
         if (result.success) {
             if (result.newPosition) {
-                this.playerPosition = result.newPosition;
+                this.playerPosition = { ...result.newPosition };
             }
 
             if (result.gemCollected) {
@@ -95,13 +97,19 @@ class MazeGame {
 
             if (result.monsterHit) {
                 this.showToast('你被怪物抓住了！游戏结束！');
-                setTimeout(() => this.resetGame(), 2000);
+                setTimeout(async () => {
+                    await this.resetGame();
+                    this.renderMaze();  // 确保重置后重新渲染
+                }, 2000);
                 return;
             }
 
             if (result.reachedExit) {
                 this.showToast('恭喜你完成迷宫！');
-                setTimeout(() => this.resetGame(), 2000);
+                setTimeout(async () => {
+                    await this.resetGame();
+                    this.renderMaze();  // 确保重置后重新渲染
+                }, 2000);
                 return;
             }
 
@@ -123,9 +131,10 @@ class MazeGame {
 
     removeGem(position, type) {
         const gems = type === 'blue' ? this.blueGems : this.redGems;
-        const index = gems.findIndex(g => g.x === position.x && g.y === position.y);
-        if (index !== -1) {
-            gems.splice(index, 1);
+        if (type === 'blue') {
+            this.blueGems = this.blueGems.filter(g => g.x !== position.x || g.y !== position.y);
+        } else {
+            this.redGems = this.redGems.filter(g => g.x !== position.x || g.y !== position.y);
         }
     }
 
@@ -152,12 +161,51 @@ class MazeGame {
         }
     }
 
-    resetGame() {
-        this.playerPosition = { x: 0, y: 0 };
+    async resetGame() {
+        // 先发送重置请求到服务器
+        try {
+            const response = await fetch('http://localhost:3000/setMazeConfig', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(exampleMazeConfig)
+            });
+
+            if (!response.ok) {
+                console.error('重置游戏状态失败');
+                return;
+            }
+        } catch (error) {
+            console.error('重置游戏状态时出错:', error);
+            return;
+        }
+
+        // 重置玩家状态
+        this.playerPosition = { ...exampleMazeConfig.start };
         this.playerDirection = 0;
+        
+        // 重置宝石状态（使用深拷贝）
+        this.blueGems = JSON.parse(JSON.stringify(exampleMazeConfig.blueGems));
+        this.redGems = JSON.parse(JSON.stringify(exampleMazeConfig.redGems));
         this.collectedBlueGems = 0;
         this.collectedRedGems = 0;
+        
+        // 重置出口状态
         this.exitOpen = false;
+        
+        // 重置怪物位置（使用深拷贝）
+        this.monsters = JSON.parse(JSON.stringify(exampleMazeConfig.monsters));
+        
+        // 重置迷宫状态（使用深拷贝）
+        this.maze = JSON.parse(JSON.stringify(exampleMazeConfig.maze));
+        
+        // 重置其他状态
+        this.exit = { ...exampleMazeConfig.exit };
+        this.requiredBlueGems = exampleMazeConfig.requiredBlueGems;
+        this.requiredRedGems = exampleMazeConfig.requiredRedGems;
+        
+        // 重新渲染整个迷宫
         this.renderMaze();
     }
 

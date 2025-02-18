@@ -35,14 +35,18 @@ app.use((req, res, next) => {
 // 设置迷宫配置的API
 app.post('/setMazeConfig', (req, res) => {
   const config = req.body;
-  gameState.maze = config.maze;
-  gameState.playerPosition = config.start;
-  gameState.blueGems = config.blueGems;
-  gameState.redGems = config.redGems;
-  gameState.monsters = config.monsters;
-  gameState.exit = config.exit;
+  
+  // 使用深拷贝确保数据独立
+  gameState.maze = JSON.parse(JSON.stringify(config.maze));
+  gameState.playerPosition = { ...config.start };
+  gameState.blueGems = JSON.parse(JSON.stringify(config.blueGems));
+  gameState.redGems = JSON.parse(JSON.stringify(config.redGems));
+  gameState.monsters = JSON.parse(JSON.stringify(config.monsters));
+  gameState.exit = { ...config.exit };
   gameState.requiredBlueGems = config.requiredBlueGems;
   gameState.requiredRedGems = config.requiredRedGems;
+  
+  // 重置状态
   gameState.collectedBlueGems = 0;
   gameState.collectedRedGems = 0;
   gameState.exitOpen = false;
