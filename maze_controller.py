@@ -1,11 +1,41 @@
 import requests
 import time
+import tomli
 from typing import Dict, Any
+from pathlib import Path
 
 
 class MazeController:
     def __init__(self, base_url: str = "http://localhost:3000"):
         self.base_url = base_url
+        self.config = self.load_config()
+
+    def load_config(self) -> Dict[str, Any]:
+        """加载TOML配置文件"""
+        config_path = Path(__file__).parent / "maze_config.toml"
+        try:
+            with open(config_path, "rb") as f:
+                config = tomli.load(f)
+                print(config)
+            return self.convert_config_format(config)
+        except Exception as e:
+            print(f"加载配置文件失败: {e}")
+            return None
+
+    def convert_config_format(self, toml_config: Dict[str, Any]) -> Dict[str, Any]:
+        """将TOML配置转换为游戏所需的格式"""
+        return {
+            "maze": [
+                [{"walkable": cell} for cell in row] for row in toml_config["maze"]
+            ],
+            "start": toml_config["start"],
+            "blueGems": toml_config["blueGems"],
+            "redGems": toml_config["redGems"],
+            "monsters": toml_config["monsters"],
+            "exit": toml_config["exit"],
+            "requiredBlueGems": toml_config["requiredBlueGems"],
+            "requiredRedGems": toml_config["requiredRedGems"]
+        }
 
     def get_game_state(self) -> Dict[str, Any]:
         """获取当前游戏状态"""
@@ -29,79 +59,33 @@ class MazeController:
 
     def reset_game(self, custom_config: Dict[str, Any] = None) -> Dict[str, Any]:
         """重置游戏"""
+        config_to_use = custom_config if custom_config else self.config
+        if not config_to_use:
+            print("错误：没有可用的配置")
+            return None
+
         response = requests.post(
-            f"{self.base_url}/resetGame",
-            json={"config": custom_config} if custom_config else {},
+            f"{self.base_url}/resetGame", json={"config": config_to_use}
         )
         return response.json()
 
 
-defaultMazeConfig = {
-    "maze": [
-        [
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-        ],
-        [
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": False},
-            {"walkable": True},
-            {"walkable": True},
-        ],
-        [
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-        ],
-        [
-            {"walkable": True},
-            {"walkable": False},
-            {"walkable": True},
-            {"walkable": False},
-            {"walkable": True},
-            {"walkable": True},
-        ],
-        [
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-        ],
-        [
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-            {"walkable": True},
-        ],
-    ],
-    "start": {"x": 0, "y": 0},
-    "blueGems": [{"x": 2, "y": 2}, {"x": 4, "y": 0}, {"x": 0, "y": 4}],
-    "redGems": [{"x": 0, "y": 2}, {"x": 2, "y": 0}, {"x": 4, "y": 4}],
-    "monsters": [{"x": 2, "y": 1}, {"x": 2, "y": 3}],
-    "exit": {"x": 4, "y": 2},
-    "requiredBlueGems": 3,
-    "requiredRedGems": 3,
-}
-
 controller = MazeController()
-controller.reset_game(defaultMazeConfig)
+controller.reset_game()
 
 
 def example_usage():
-    # 获取初始游戏状态
+    # 创建控制器实例
+
+    # 使用配置文件重置游戏
+    print("重置游戏...")
+    result = controller.reset_game()
+    if not result:
+        print("游戏重置失败")
+        return
+
+    print("游戏已重置")
+
     # 获取初始游戏状态
     state = controller.get_game_state()
     print("初始状态:", state)
