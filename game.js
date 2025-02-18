@@ -17,6 +17,27 @@ class MazeGame {
         this.updateUI();
     }
 
+    // 显示toast提示
+    showToast(message) {
+        // 移除现有的toast
+        const existingToast = document.querySelector('.toast');
+        if (existingToast) {
+            document.body.removeChild(existingToast);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        // 动画结束后移除toast
+        toast.addEventListener('animationend', () => {
+            if (document.body.contains(toast)) {
+                document.body.removeChild(toast);
+            }
+        });
+    }
+
     initializeControls() {
         document.getElementById('turnLeft').addEventListener('click', () => this.turn('left'));
         document.getElementById('moveForward').addEventListener('click', () => this.move());
@@ -56,7 +77,6 @@ class MazeGame {
 
         const result = await response.json();
         if (result.success) {
-            // 使用服务器返回的新位置更新玩家位置
             if (result.newPosition) {
                 this.playerPosition = result.newPosition;
             }
@@ -65,27 +85,29 @@ class MazeGame {
                 if (result.gemType === 'blue') {
                     this.collectedBlueGems++;
                     this.removeGem(this.playerPosition, 'blue');
+                    this.showToast('获得蓝宝石！');
                 } else {
                     this.collectedRedGems++;
                     this.removeGem(this.playerPosition, 'red');
+                    this.showToast('获得红宝石！');
                 }
             }
 
             if (result.monsterHit) {
-                alert('你被怪物抓住了！游戏结束！');
-                this.resetGame();
+                this.showToast('你被怪物抓住了！游戏结束！');
+                setTimeout(() => this.resetGame(), 2000);
                 return;
             }
 
             if (result.reachedExit) {
-                alert('恭喜你完成迷宫！');
-                this.resetGame();
+                this.showToast('恭喜你完成迷宫！');
+                setTimeout(() => this.resetGame(), 2000);
                 return;
             }
 
-            this.renderMaze(); // 使用renderMaze替代updateUI来完全重新渲染迷宫
+            this.renderMaze();
         } else if (result.hitWall) {
-            alert('撞墙了！');
+            this.showToast('撞墙了！');
         }
     }
 
