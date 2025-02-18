@@ -73,18 +73,6 @@ app.post('/resetGame', (req, res) => {
   });
 });
 
-// 设置迷宫配置
-app.post('/setMazeConfig', (req, res) => {
-  const config = req.body;
-  resetGameState(config);
-
-  const renderState = generateRenderState();
-  res.json({
-    success: true,
-    message: '迷宫配置已更新',
-    gameState: renderState
-  });
-});
 
 // 处理移动请求
 app.post('/move', (req, res) => {

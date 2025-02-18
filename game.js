@@ -139,7 +139,7 @@ class MazeGame {
 
     async resetGame() {
         try {
-            const response = await fetch('http://localhost:3000/setMazeConfig', {
+            const response = await fetch('http://localhost:3000/resetGame', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

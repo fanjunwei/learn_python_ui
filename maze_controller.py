@@ -35,11 +35,6 @@ class MazeController:
         )
         return response.json()
 
-    def set_maze_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """设置迷宫配置"""
-        response = requests.post(f"{self.base_url}/setMazeConfig", json=config)
-        return response.json()
-
 
 controller = MazeController()
 
