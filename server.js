@@ -21,54 +21,6 @@ let gameState = {
   exit: { x: 0, y: 0 }
 };
 
-// Socket连接管理
-let activeConnections = new Set();
-
-io.on('connection', (socket) => {
-  console.log('新的客户端连接');
-  activeConnections.add(socket);
-
-  socket.on('disconnect', () => {
-    console.log('客户端断开连接');
-    activeConnections.delete(socket);
-  });
-});
-
-// 广播游戏状态更新
-function broadcastGameState(renderState, message = '') {
-  const fullState = {
-    gameState: renderState,
-    message: message
-  };
-  
-  activeConnections.forEach(socket => {
-    socket.emit('gameStateUpdate', fullState);
-  });
-}
-
-// 显示Toast消息
-function showToast(message) {
-  activeConnections.forEach(socket => {
-    socket.emit('showToast', { message });
-  });
-}
-
-// 渲染控制API
-app.post('/render', (req, res) => {
-  const { command } = req.body;
-  switch (command) {
-    case 'showToast':
-      showToast(req.body.message);
-      break;
-    case 'updateState':
-      broadcastGameState(generateRenderState(), req.body.message);
-      break;
-    default:
-      return res.status(400).json({ success: false, message: '未知的渲染命令' });
-  }
-  res.json({ success: true });
-});
-
 // 示例迷宫配置
 const defaultMazeConfig = {
   maze: [
@@ -113,8 +65,6 @@ app.post('/resetGame', (req, res) => {
   resetGameState(config);
   
   const renderState = generateRenderState();
-  broadcastGameState(renderState, '游戏已重置');
-  
   res.json({
     success: true,
     message: '游戏已重置',
@@ -128,8 +78,6 @@ app.post('/setMazeConfig', (req, res) => {
   resetGameState(config);
   
   const renderState = generateRenderState();
-  broadcastGameState(renderState, '迷宫配置已更新');
-  
   res.json({ 
     success: true,
     message: '迷宫配置已更新',
@@ -162,28 +110,23 @@ app.post('/move', (req, res) => {
       break;
   }
 
+  // 生成渲染状态
   const renderState = generateRenderState();
   
+  // 添加提示消息
   if (result.hitWall) {
     result.message = '撞墙了！';
   } else if (result.gemCollected) {
     result.message = `获得${result.gemType === 'blue' ? '蓝' : '红'}宝石！`;
   } else if (result.monsterHit) {
     result.message = '你被怪物抓住了！游戏结束！';
-    setTimeout(() => {
-      resetGameState(defaultMazeConfig);
-      broadcastGameState(generateRenderState(), '游戏已重置');
-    }, 2000);
+    // 自动重置游戏
+    setTimeout(() => resetGameState(defaultMazeConfig), 2000);
   } else if (result.reachedExit) {
     result.message = '恭喜你完成迷宫！';
-    setTimeout(() => {
-      resetGameState(defaultMazeConfig);
-      broadcastGameState(generateRenderState(), '游戏已重置');
-    }, 2000);
+    // 自动重置游戏
+    setTimeout(() => resetGameState(defaultMazeConfig), 2000);
   }
-
-  // 广播状态更新
-  broadcastGameState(renderState, result.message);
 
   res.json({
     ...result,
