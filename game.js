@@ -15,8 +15,6 @@ class MazeGame {
         this.requiredRedGems = 3;
 
         this.initializeControls();
-        this.updateUI();
-        // this.renderMaze();  // 使用renderMaze替代updateUI
     }
 
     // 显示toast提示
@@ -138,28 +136,6 @@ class MazeGame {
         }
     }
 
-    updateUI() {
-        // 更新玩家位置和方向
-        const playerElement = document.querySelector('.player');
-        if (playerElement) {
-            playerElement.style.transform = `translate(-50%, -50%) rotate(${this.playerDirection * 90}deg)`;
-        }
-
-        // 更新宝石计数
-        document.getElementById('blueGemCount').textContent = this.collectedBlueGems;
-        document.getElementById('redGemCount').textContent = this.collectedRedGems;
-        document.getElementById('requiredBlueGems').textContent = this.requiredBlueGems;
-        document.getElementById('requiredRedGems').textContent = this.requiredRedGems;
-
-        // 更新出口状态
-        const exitStatus = document.getElementById('exitStatus');
-        if (this.collectedBlueGems >= this.requiredBlueGems && 
-            this.collectedRedGems >= this.requiredRedGems) {
-            this.exitOpen = true;
-            exitStatus.textContent = '开启';
-            document.querySelector('.exit').classList.add('open');
-        }
-    }
 
     async resetGame() {
         // 先发送重置请求到服务器
@@ -247,8 +223,9 @@ class MazeGame {
 
         this.renderMaze();
     }
-
+    
     renderMaze() {
+        console.log('开始渲染迷宫...');
         const mazeElement = document.getElementById('maze');
         mazeElement.style.gridTemplateColumns = `repeat(${this.maze[0].length}, 40px)`;
         mazeElement.innerHTML = '';
