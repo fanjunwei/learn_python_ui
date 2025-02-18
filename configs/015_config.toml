@@ -1,0 +1,81 @@
+title = "迷宫配置 015"
+maze = [
+    [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+    ],
+    [
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        true,
+    ],
+    [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+    ],
+    [
+        true,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+    ],
+    [
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+    ],
+    [
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+    ],
+]
+blueGems = [
+    { x = 3, y = 3 },
+    { x = 5, y = 4 },
+    { x = 2, y = 2 },
+]
+redGems = [
+    { x = 4, y = 4 },
+    { x = 6, y = 5 },
+    { x = 6, y = 4 },
+]
+monsters = [
+    { x = 5, y = 2 },
+    { x = 4, y = 3 },
+]
+requiredBlueGems = 3
+requiredRedGems = 3
+
+[start]
+x = 0
+y = 0
+
+[exit]
+x = 0
+y = 2
