@@ -279,15 +279,24 @@ function checkCollisions(result) {
 }
 
 const port = 3000;
+let server = null;
 
 function startServer(window) {
   mainWindow = window;
-  http.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+  server = http.listen(port, () => {
+    console.log(`服务器运行在 http://localhost:${port}`);
   });
+}
+
+function stopServer() {
+  if (server) {
+    server.close();
+    server = null;
+  }
 }
 
 module.exports = {
   startServer,
+  stopServer,
   app
 }

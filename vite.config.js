@@ -11,7 +11,9 @@ module.exports = defineConfig({
     }
   },
   server: {
-    port: 5173
+    port: 5173,
+    strictPort: true,
+    host: true
   },
   build: {
     outDir: 'dist',

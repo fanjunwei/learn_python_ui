@@ -7,8 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "electron:dev": "cross-env NODE_ENV=development concurrently \"vite\" \"electron .\"",
-    "electron:build": "vite build && electron-builder"
+    "electron:dev": "cross-env NODE_ENV=development concurrently -k \"vite --host\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:build": "vite build && electron-builder",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [
     "maze",
@@ -28,6 +29,8 @@
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "electron-builder": "^24.9.1",
-    "vite": "^5.0.12"
+    "kill-port": "^2.0.1",
+    "vite": "^5.0.12",
+    "wait-on": "^7.2.0"
   }
 }
