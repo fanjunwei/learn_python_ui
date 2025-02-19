@@ -42,6 +42,7 @@
       <button @click="turn('right')">右转</button>
       <button v-if="!gameState.autoCollect" @click="collectBlueGem">收集蓝宝石</button>
       <button v-if="!gameState.autoCollect" @click="collectRedGem">收集红宝石</button>
+      <button class="danger" @click="resetGame">重置游戏</button>
     </div>
     <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
@@ -211,6 +212,13 @@ const collectRedGem = async () => {
     body: JSON.stringify({ action: 'collect_red' })
   })
 }
+
+const resetGame = async () => {
+  await fetch('http://localhost:3000/resetGame', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
+}
 // 初始化游戏
 const initGame = async () => {
   try {
@@ -304,15 +312,6 @@ onUnmounted(() => {
 <style scoped>
 .maze-row {
   display: contents;
-}
-
-.controls button {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.controls button:hover {
-  background-color: #45a049;
 }
 
 .maze {

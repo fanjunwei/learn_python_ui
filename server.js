@@ -45,6 +45,8 @@ const defaultMazeConfig = {
   autoCollect: false
 };
 
+let currentConfig = defaultMazeConfig;
+
 // 添加CORS支持
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -70,7 +72,8 @@ app.get('/getGameState', (req, res) => {
 // 重置游戏
 app.post('/resetGame', (req, res) => {
   console.log('收到重置游戏请求')
-  const config = req.body.config || defaultMazeConfig
+  const config = req.body.config || currentConfig || defaultMazeConfig
+  currentConfig = config
   resetGameState(config)
 
   const renderState = generateRenderState()

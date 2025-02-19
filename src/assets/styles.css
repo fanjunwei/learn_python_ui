@@ -76,6 +76,11 @@ body {
     transition: background-color 0.3s;
 }
 
+button {
+    background-color: #4CAF50;
+    color: white;
+}
+
 button:hover {
     background-color: #45a049;
 }
@@ -83,6 +88,16 @@ button:hover {
 button:active {
     background-color: #3d8b40;
 }
+
+ button.danger {
+    background-color: #f00;
+ }
+ button.danger:hover {
+    background-color: #c00;
+ }
+ button.danger:active {
+    background-color: #a00;
+ }
 
 .toast {
     position: fixed;
