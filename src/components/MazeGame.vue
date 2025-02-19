@@ -62,7 +62,9 @@ const gameState = ref({
   collectedBlueGems: 0,
   collectedRedGems: 0,
   requiredBlueGems: 0,
-  requiredRedGems: 0
+  requiredRedGems: 0,
+  gameOver: false,
+  success: false,
 })
 
 // Toast消息

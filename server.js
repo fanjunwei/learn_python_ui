@@ -19,7 +19,9 @@ let gameState = {
   requiredRedGems: 3,
   monsters: [],
   exitOpen: false,
-  exit: { x: 0, y: 0 }
+  exit: { x: 0, y: 0 },
+  gameOver: false,
+  success: false,
 };
 
 // 示例迷宫配置
@@ -97,7 +99,14 @@ app.post('/move', async (req, res) => {
     reachedExit: false,
     message: ''
   };
-
+  if (gameState.gameOver) {
+    result.message = '游戏已结束！';
+    res.json({
+      ...result,
+      gameState: generateRenderState()
+    });
+    return;
+  }
   switch (action) {
     case 'forward':
       result = moveForward();
@@ -120,12 +129,8 @@ app.post('/move', async (req, res) => {
     result.message = `获得${result.gemType === 'blue' ? '蓝' : '红'}宝石！`;
   } else if (result.monsterHit) {
     result.message = '你被怪物抓住了！游戏结束！';
-    // 自动重置游戏
-    setTimeout(() => resetGameState(defaultMazeConfig), 2000);
   } else if (result.reachedExit) {
     result.message = '恭喜你完成迷宫！';
-    // 自动重置游戏
-    setTimeout(() => resetGameState(defaultMazeConfig), 2000);
   }
   if (result.success) {
     mainWindow.webContents.send('renderGameState', renderState);
@@ -163,6 +168,8 @@ function resetGameState(config) {
   gameState.collectedRedGems = 0;
   gameState.exitOpen = false;
   gameState.playerDirection = 0;
+  gameState.gameOver = false;
+  gameState.success = false;
 }
 
 // 生成渲染状态
@@ -260,6 +267,8 @@ function checkCollisions(result) {
   // 检查怪物
   if (gameState.monsters.some(m => m.x === pos.x && m.y === pos.y)) {
     result.monsterHit = true;
+    gameState.gameOver = true;
+    gameState.success = false;
   }
 
   // 检查是否开启出口
@@ -273,6 +282,8 @@ function checkCollisions(result) {
     pos.x === gameState.exit.x &&
     pos.y === gameState.exit.y) {
     result.reachedExit = true;
+    gameState.gameOver = true;
+    gameState.success = true;
   }
 
   return result;
