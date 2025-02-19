@@ -40,6 +40,7 @@ const currentView = ref('game')
   background: white;
   cursor: pointer;
   transition: background-color 0.3s;
+  color: black;
 }
 
 .nav-bar button.active {

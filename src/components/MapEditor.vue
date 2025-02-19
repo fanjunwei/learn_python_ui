@@ -19,17 +19,12 @@
         <button @click="saveMap">保存地图</button>
       </div>
     </div>
-    
+
     <div class="map-grid" :style="gridStyle">
       <div v-for="(row, y) in mapData" :key="y" class="map-row">
-        <div v-for="(cell, x) in row" 
-             :key="x" 
-             class="map-cell"
-             :class="getCellClasses(x, y)"
-             @click="handleCellClick(x, y)"
-             @mouseover="handleCellHover(x, y)"
-             @mousedown="isDrawing = true"
-             @mouseup="isDrawing = false">
+        <div v-for="(cell, x) in row" :key="x" class="map-cell" :class="getCellClasses(x, y)"
+          @click="handleCellClick(x, y)" @mouseover="handleCellHover(x, y)" @mousedown="isDrawing = true"
+          @mouseup="isDrawing = false">
         </div>
       </div>
     </div>
@@ -57,17 +52,17 @@ const exitPos = ref(null)
 
 // 初始化地图
 const initMap = () => {
-  mapData.value = Array(height.value).fill().map(() => 
+  mapData.value = Array(height.value).fill().map(() =>
     Array(width.value).fill().map(() => ({ walkable: true }))
   )
 }
 
 // 调整地图大小
 const resizeMap = () => {
-  const newMap = Array(height.value).fill().map(() => 
+  const newMap = Array(height.value).fill().map(() =>
     Array(width.value).fill().map(() => ({ walkable: true }))
   )
-  
+
   // 复制现有数据
   mapData.value.forEach((row, y) => {
     if (y < height.value) {
@@ -78,24 +73,24 @@ const resizeMap = () => {
       })
     }
   })
-  
+
   mapData.value = newMap
-  
+
   // 清理超出范围的对象
   const cleanPositions = (positions) => {
-    return positions.filter(pos => 
+    return positions.filter(pos =>
       pos.x < width.value && pos.y < height.value
     )
   }
-  
+
   blueGems.value = cleanPositions(blueGems.value)
   redGems.value = cleanPositions(redGems.value)
   monsters.value = cleanPositions(monsters.value)
-  
+
   if (startPos.value && (startPos.value.x >= width.value || startPos.value.y >= height.value)) {
     startPos.value = null
   }
-  
+
   if (exitPos.value && (exitPos.value.x >= width.value || exitPos.value.y >= height.value)) {
     exitPos.value = null
   }
@@ -200,7 +195,7 @@ const saveMap = async () => {
   }
 
   // 将地图数据转换为简单的 0/1 数组
-  const mazeArray = mapData.value.map(row => 
+  const mazeArray = mapData.value.map(row =>
     row.map(cell => cell.walkable ? 1 : 0)
   )
 
@@ -241,14 +236,14 @@ const loadMap = async () => {
     const result = await ipcRenderer.invoke('load-map')
     if (result.success) {
       const config = result.data
-      
+
       // 更新地图尺寸
       width.value = config.maze[0].length
       height.value = config.maze.length
-      
+
       // 更新地图数据
       mapData.value = config.maze
-      
+
       // 更新其他数据
       blueGems.value = config.blueGems
       redGems.value = config.redGems
@@ -270,6 +265,9 @@ initMap()
 <style scoped>
 .editor-container {
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .toolbar {
@@ -289,6 +287,7 @@ initMap()
   border: 1px solid #ccc;
   background: white;
   cursor: pointer;
+  color: black;
 }
 
 .tool-controls button.active {
@@ -391,4 +390,4 @@ input[type="number"] {
 .file-controls button:hover {
   background: #45a049;
 }
-</style> 
+</style>
