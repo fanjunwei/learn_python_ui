@@ -22,7 +22,7 @@ body {
     padding: 10px;
     background-color: #fff;
     border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .maze {
@@ -45,8 +45,6 @@ body {
     background-color: #333;
 }
 
-
-
 .exit {
     position: absolute;
     top: 50%;
@@ -61,43 +59,6 @@ body {
 .exit.open {
     background-color: #00cc00;
 }
-
-.controls {
-    display: flex;
-    gap: 10px;
-}
-
-.controls button {
-    padding: 10px 20px;
-    font-size: 16px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-button {
-    background-color: #4CAF50;
-    color: white;
-}
-
-button:hover {
-    background-color: #45a049;
-}
-
-button:active {
-    background-color: #3d8b40;
-}
-
- button.danger {
-    background-color: #f00;
- }
- button.danger:hover {
-    background-color: #c00;
- }
- button.danger:active {
-    background-color: #a00;
- }
 
 .toast {
     position: fixed;
@@ -114,20 +75,23 @@ button:active {
 }
 
 @keyframes toastAnimation {
-    0% { 
+    0% {
         opacity: 0;
         transform: translate(-50%, -20px);
     }
-    15% { 
+
+    15% {
         opacity: 1;
         transform: translate(-50%, 0);
     }
-    85% { 
+
+    85% {
         opacity: 1;
         transform: translate(-50%, 0);
     }
-    100% { 
+
+    100% {
         opacity: 0;
         transform: translate(-50%, -20px);
     }
-} 
+}

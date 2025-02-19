@@ -37,12 +37,29 @@
       </template>
     </div>
     <div class="controls">
-      <button @click="turn('left')">左转</button>
-      <button @click="move">前进</button>
-      <button @click="turn('right')">右转</button>
-      <button v-if="!gameState.autoCollect" @click="collectBlueGem">收集蓝宝石</button>
-      <button v-if="!gameState.autoCollect" @click="collectRedGem">收集红宝石</button>
-      <button class="danger" @click="resetGame">重置游戏</button>
+      <el-button @click="turn('left')" type="primary" plain>
+        <el-icon><ArrowLeft /></el-icon>
+        左转
+      </el-button>
+      <el-button @click="move" type="primary">
+        前进
+      </el-button>
+      <el-button @click="turn('right')" type="primary" plain>
+        <el-icon><ArrowRight /></el-icon>
+        右转
+      </el-button>
+      <el-button v-if="!gameState.autoCollect" @click="collectBlueGem" type="success">
+        <div  class="gem-icon blue"></div>
+        收集蓝宝石
+      </el-button>
+      <el-button v-if="!gameState.autoCollect" @click="collectRedGem" type="success">
+        <div  class="gem-icon red"></div>
+        收集红宝石
+      </el-button>
+      <el-button @click="resetGame" type="danger">
+        <el-icon><RefreshRight /></el-icon>
+        重置游戏
+      </el-button>
     </div>
     <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
@@ -315,7 +332,12 @@ onUnmounted(() => {
 }
 
 .maze {
-  border: 1px solid #ccc;
+  display: grid;
+  gap: 2px;
+  background-color: #333;
+  padding: 2px;
+  border-radius: 5px;
+  margin: 20px 0;
 }
 
 .sprite {
@@ -474,5 +496,16 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: bold;
   color: #333;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--el-bg-color);
+  border-radius: var(--el-border-radius-base);
+  box-shadow: var(--el-box-shadow-light);
 }
 </style>
