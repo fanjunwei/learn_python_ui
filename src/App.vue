@@ -3,7 +3,7 @@
     <el-header>
       <el-menu mode="horizontal" :ellipsis="false" class="nav-menu">
         <el-menu-item index="game" @click="currentView = 'game'">
-          <el-icon><GameController /></el-icon>
+          <el-icon><Orange /></el-icon>
           <span>游戏</span>
         </el-menu-item>
         <el-menu-item index="editor" @click="currentView = 'editor'">
@@ -30,22 +30,5 @@ const currentView = ref('game')
 <style>
 .app-container {
   min-height: 100vh;
-}
-
-.el-header {
-  padding: 0;
-  background-color: var(--el-bg-color);
-  box-shadow: var(--el-box-shadow-light);
-}
-
-.nav-menu {
-  height: 100%;
-}
-
-.el-main {
-  background-color: var(--el-bg-color-page);
-  display: flex;
-  justify-content: center;
-  padding: 20px;
 }
 </style> 

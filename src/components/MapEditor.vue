@@ -1,18 +1,18 @@
 <template>
   <div class="editor-container">
-    <el-card class="toolbar-card">
-      <el-row :gutter="20">
+    <el-card class="toolbar-card" style="min-width: 1142px;">
+      <el-row align="middle">
         <el-col :span="6">
           <el-form label-position="top" class="size-controls">
             <el-form-item label="地图尺寸">
-              <el-input-number v-model="width" :min="5" :max="20" @change="resizeMap" class="size-input" />
-              x
-              <el-input-number v-model="height" :min="5" :max="20" @change="resizeMap" class="size-input" />
+              <el-input-number v-model="width" :min="1" :max="20" @change="resizeMap" size="small" class="size-input" />
+              <span class="size-input-x">x</span>
+              <el-input-number v-model="height" :min="1" :max="20" @change="resizeMap" size="small" class="size-input" />
             </el-form-item>
           </el-form>
         </el-col>
-        <el-col :span="12">
-          <el-radio-group v-model="currentTool" class="tool-controls">
+        <el-col :span="13">
+          <el-radio-group v-model="currentTool">
             <el-radio-button label="wall">
               <el-icon><Picture /></el-icon>
               墙壁
@@ -43,7 +43,7 @@
             </el-radio-button>
           </el-radio-group>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="5">
           <div class="file-controls">
             <el-button type="primary" @click="loadMap">
               <el-icon><Folder /></el-icon>
@@ -58,7 +58,7 @@
       </el-row>
     </el-card>
 
-    <el-card class="map-card">
+    <el-card class="map-card" :body-style="{ display: 'flex', justifyContent: 'center' }">
       <div class="map-grid" :style="gridStyle">
         <div v-for="(row, y) in mapData" :key="y" class="map-row">
           <div v-for="(cell, x) in row" :key="x" class="map-cell" :class="getCellClasses(x, y)"
@@ -321,15 +321,9 @@ initMap()
   align-items: center;
 }
 
-.size-input {
-  width: 80px;
-}
 
-.tool-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+
+
 
 .file-controls {
   display: flex;
@@ -339,7 +333,7 @@ initMap()
 
 .map-card {
   padding: 20px;
-  background: var(--el-bg-color);
+  background: var(--el-color-primary-light-5);
 }
 
 .map-grid {
@@ -417,5 +411,14 @@ initMap()
 .map-cell.exit {
   background: url('@/assets/gate.png') 0 0;
   background-size: 40px 160px;
+}
+
+.size-input {
+  width: 80px;
+}
+
+.size-input-x {
+  margin-left: 5px;
+  margin-right: 5px;
 }
 </style>
