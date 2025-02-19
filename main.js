@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { startServer, stopServer } = require('./server');
 const killPort = require('kill-port');
+const TOML = require('@iarna/toml')
 
 const isDev = process.env.NODE_ENV === 'development';
 const port = process.env.PORT || 5173;
@@ -24,7 +25,7 @@ ipcMain.handle('save-map', async (event, mapConfig) => {
 
     if (filePath) {
       // 将地图配置转换为 TOML 格式
-      const tomlContent = generateToml(mapConfig);
+      const tomlContent = TOML.stringify(mapConfig)
       fs.writeFileSync(filePath, tomlContent, 'utf-8');
       return { success: true };
     }
@@ -33,45 +34,6 @@ ipcMain.handle('save-map', async (event, mapConfig) => {
     return { success: false, message: error.message };
   }
 });
-
-// 生成 TOML 格式的内容
-function generateToml(config) {
-  const lines = [
-    `title = "${config.title}"`,
-    '',
-    '# 迷宫布局 (1: 可通过, 0: 墙壁)',
-    'maze = [',
-    ...config.maze.map(row => '  [' + row.join(', ') + '],'),
-    ']',
-    '',
-    '# 起点坐标',
-    `start = { x = ${config.start.x}, y = ${config.start.y} }`,
-    '',
-    '# 蓝宝石位置',
-    'blueGems = [',
-    ...config.blueGems.map(gem => `  { x = ${gem.x}, y = ${gem.y} },`),
-    ']',
-    '',
-    '# 红宝石位置',
-    'redGems = [',
-    ...config.redGems.map(gem => `  { x = ${gem.x}, y = ${gem.y} },`),
-    ']',
-    '',
-    '# 怪物位置',
-    'monsters = [',
-    ...config.monsters.map(monster => `  { x = ${monster.x}, y = ${monster.y} },`),
-    ']',
-    '',
-    '# 终点坐标',
-    `exit = { x = ${config.exit.x}, y = ${config.exit.y} }`,
-    '',
-    '# 所需宝石数量',
-    `requiredBlueGems = ${config.requiredBlueGems}`,
-    `requiredRedGems = ${config.requiredRedGems}`
-  ];
-
-  return lines.join('\n');
-}
 
 // 处理加载地图请求
 ipcMain.handle('load-map', async (event) => {
@@ -87,13 +49,13 @@ ipcMain.handle('load-map', async (event) => {
 
     if (filePaths && filePaths.length > 0) {
       const content = fs.readFileSync(filePaths[0], 'utf-8');
-      // 将 0/1 数组转换为 walkable 对象数组
-      const config = parseToml(content);
+      // 解析 TOML 内容
+      const config = TOML.parse(content);
       return { 
         success: true, 
         data: {
           ...config,
-          maze: config.maze.map(row => row.map(cell => ({ walkable: cell === 1 })))
+          maze: config.maze.map(row => row.map(cell => ({ walkable: !!cell })))
         }
       };
     }
@@ -102,77 +64,6 @@ ipcMain.handle('load-map', async (event) => {
     return { success: false, message: error.message };
   }
 });
-
-// 解析 TOML 格式的内容
-function parseToml(content) {
-  const lines = content.split('\n');
-  const config = {
-    title: '',
-    maze: [],
-    start: { x: 0, y: 0 },
-    blueGems: [],
-    redGems: [],
-    monsters: [],
-    exit: { x: 0, y: 0 },
-    requiredBlueGems: 0,
-    requiredRedGems: 0
-  };
-
-  let currentSection = '';
-  let currentArray = [];
-
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    if (!trimmedLine || trimmedLine.startsWith('#')) continue;
-
-    if (trimmedLine.startsWith('title')) {
-      config.title = trimmedLine.split('=')[1].trim().replace(/"/g, '');
-    } else if (trimmedLine.startsWith('maze')) {
-      currentSection = 'maze';
-    } else if (trimmedLine.startsWith('start')) {
-      const coords = trimmedLine.match(/x = (\d+), y = (\d+)/);
-      if (coords) {
-        config.start = { x: parseInt(coords[1]), y: parseInt(coords[2]) };
-      }
-    } else if (trimmedLine.startsWith('blueGems')) {
-      currentSection = 'blueGems';
-      currentArray = [];
-    } else if (trimmedLine.startsWith('redGems')) {
-      currentSection = 'redGems';
-      currentArray = [];
-    } else if (trimmedLine.startsWith('monsters')) {
-      currentSection = 'monsters';
-      currentArray = [];
-    } else if (trimmedLine.startsWith('exit')) {
-      const coords = trimmedLine.match(/x = (\d+), y = (\d+)/);
-      if (coords) {
-        config.exit = { x: parseInt(coords[1]), y: parseInt(coords[2]) };
-      }
-    } else if (trimmedLine.startsWith('requiredBlueGems')) {
-      config.requiredBlueGems = parseInt(trimmedLine.split('=')[1]);
-    } else if (trimmedLine.startsWith('requiredRedGems')) {
-      config.requiredRedGems = parseInt(trimmedLine.split('=')[1]);
-    } else if (trimmedLine.includes('[') && !trimmedLine.includes('=')) {
-      const numbers = trimmedLine.replace(/[\[\],\s]/g, ' ').trim().split(/\s+/);
-      if (currentSection === 'maze') {
-        if (numbers.length > 0) {
-          config.maze.push(numbers.map(n => parseInt(n)));
-        }
-      }
-    } else if (trimmedLine.includes('x =')) {
-      const coords = trimmedLine.match(/x = (\d+), y = (\d+)/);
-      if (coords && currentSection) {
-        const pos = { x: parseInt(coords[1]), y: parseInt(coords[2]) };
-        currentArray.push(pos);
-        if (currentSection === 'blueGems') config.blueGems = [...currentArray];
-        if (currentSection === 'redGems') config.redGems = [...currentArray];
-        if (currentSection === 'monsters') config.monsters = [...currentArray];
-      }
-    }
-  }
-
-  return config;
-}
 
 async function cleanup() {
   if (isQuitting) return;
