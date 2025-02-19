@@ -136,7 +136,7 @@ app.post('/move', async (req, res) => {
   // 添加提示消息
   if (result.hitWall) {
     result.message = '撞墙了！';
-    mainWindow.webContents.send('playAudio', 'wall');
+    mainWindow.webContents.send('playAudio', 'error');
   } else if (result.gemCollected) {
     result.message = `获得${result.gemType === 'blue' ? '蓝' : '红'}宝石！`;
     mainWindow.webContents.send('playAudio', 'gem');
@@ -146,6 +146,18 @@ app.post('/move', async (req, res) => {
   } else if (result.reachedExit) {
     result.message = '恭喜你完成迷宫！';
     mainWindow.webContents.send('playAudio', 'complete');
+  }
+  if (action === 'collect_blue') {
+    if (!result.gemCollected) {
+      result.message = '没有蓝宝石！';
+      mainWindow.webContents.send('playAudio', 'error');
+    }
+  }
+  if (action === 'collect_red') {
+    if (!result.gemCollected) {
+      result.message = '没有红宝石！';
+      mainWindow.webContents.send('playAudio', 'error');
+    }
   }
   if (result.success) {
     mainWindow.webContents.send('renderGameState', renderState);

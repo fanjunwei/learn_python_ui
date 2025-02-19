@@ -78,7 +78,7 @@ bgm.value.loop = true
 const getGemAudio = ref(new Audio(new URL('@/assets/audio/get_gem.mp3', import.meta.url).href))
 const getMonsterAudio = ref(new Audio(new URL('@/assets/audio/get_monster.mp3', import.meta.url).href))
 const completeAudio = ref(new Audio(new URL('@/assets/audio/complete.mp3', import.meta.url).href))
-const wallAudio = ref(new Audio(new URL('@/assets/audio/wall.mp3', import.meta.url).href))
+const errorAudio = ref(new Audio(new URL('@/assets/audio/error.mp3', import.meta.url).href))
 // 淡出背景音乐
 const fadeOutBgm = () => {
   const fadeOutInterval = 50 // 每50毫秒调整一次音量
@@ -247,13 +247,25 @@ const handleShowToast = (event, message) => {
 
 const handlePlayAudio = (event, audioType) => {
   if (audioType === 'gem') {
+    if (getGemAudio.value.played) {
+      getGemAudio.value.pause()
+    }
     getGemAudio.value.play()
   } else if (audioType === 'monster') {
+    if (getMonsterAudio.value.played) {
+      getMonsterAudio.value.pause()
+    }
     getMonsterAudio.value.play()
   } else if (audioType === 'complete') {
+    if (completeAudio.value.played) {
+      completeAudio.value.pause()
+    }
     completeAudio.value.play()
-  } else if (audioType === 'wall') {
-    wallAudio.value.play()
+  } else if (audioType === 'error') {
+    if (errorAudio.value.played) {
+      errorAudio.value.pause()
+    }
+    errorAudio.value.play()
   }
 }
 // 监听服务器消息
