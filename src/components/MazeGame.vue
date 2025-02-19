@@ -17,8 +17,7 @@
                :class="{ 'wall': !cell.walkable }">
             <!-- 玩家 -->
             <div v-if="isPlayerPosition(x, y)" 
-                 class="player"
-                 :style="playerRotationStyle">
+                 :class="playerClass">
             </div>
             <!-- 蓝宝石 -->
             <div v-if="hasBluGem(x, y)" class="gem blue"></div>
@@ -80,8 +79,12 @@ const mazeGridStyle = computed(() => {
   } : {}
 })
 
-const playerRotationStyle = computed(() => ({
-  transform: `translate(-50%, -50%) rotate(${gameState.value.playerDirection * 90}deg)`
+const playerClass = computed(() => ({
+  'sprite': true,
+  'up': gameState.value.playerDirection === 0,
+  'right': gameState.value.playerDirection === 1,
+  'down': gameState.value.playerDirection === 2,
+  'left': gameState.value.playerDirection === 3,
 }))
 
 // 辅助函数
@@ -221,4 +224,66 @@ onUnmounted(() => {
   min-width: 200px;
   border: 1px solid #ccc;
 }
+.sprite {
+    position: absolute;
+    width: 40px; /* 每帧的宽度 */
+    height: 40px; /* 每帧的高度 */
+    background-image: url('@/assets/dog_sprite.png'); /* 精灵图的路径 */
+    background-repeat: no-repeat; /* 不重复背景 */
+    background-size: 160px 160px;
+}
+
+.sprite.down {
+    animation: play_down 1.5s steps(4) infinite;
+}
+
+.sprite.up {
+    animation: play_up 1.5s steps(4) infinite;
+}
+
+.sprite.left {
+    animation: play_left 1.5s steps(4) infinite;
+}
+
+.sprite.right {
+    animation: play_right 1.5s steps(4) infinite;
+}
+
+@keyframes play_down {
+    from {
+        background-position: 0 0; /* 从第一帧开始 */
+    }
+    to {
+        background-position: -160px 0; /* 到最后一帧结束 */
+    }
+}
+
+@keyframes play_up {
+    from {
+        background-position: 0 -80px; /* 从第一帧开始 */
+    }
+    to {
+        background-position: -160px -80px; /* 到最后一帧结束 */
+    }
+}
+
+@keyframes play_left {
+    from {
+        background-position: 0 -40px; /* 从第一帧开始 */
+    }
+    to {
+        background-position: -160px -40px; /* 到最后一帧结束 */
+    }
+}
+
+@keyframes play_right {
+    from {
+        background-position: 0 -120px; /* 从第一帧开始 */
+    }
+    to {
+        background-position: -160px -120px; /* 到最后一帧结束 */
+    }
+}
+
+
 </style> 
