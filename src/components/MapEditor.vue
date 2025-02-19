@@ -272,6 +272,11 @@ initMap()
   background: #333;
   padding: 2px;
   border-radius: 5px;
+  gap: 2px;
+}
+
+.map-row {
+  display: contents;
 }
 
 .map-cell {
@@ -280,10 +285,13 @@ initMap()
   background: white;
   position: relative;
   cursor: pointer;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
 }
 
 .map-cell.wall {
   background: #333;
+  border-color: #222;
 }
 
 .map-cell.blue-gem::after {
