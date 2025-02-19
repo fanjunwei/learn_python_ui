@@ -40,6 +40,8 @@
       <button @click="turn('left')">左转</button>
       <button @click="move">前进</button>
       <button @click="turn('right')">右转</button>
+      <button v-if="!gameState.autoCollect" @click="collectBlueGem">收集蓝宝石</button>
+      <button v-if="!gameState.autoCollect" @click="collectRedGem">收集红宝石</button>
     </div>
     <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
@@ -66,6 +68,8 @@ const gameState = ref({
   requiredRedGems: 0,
   gameOver: false,
   success: false,
+  onGemType: 'none',
+  autoCollect: false,
 })
 
 // Toast消息
@@ -137,13 +141,21 @@ const turn = async (direction) => {
   }
 }
 
-const showToast = (message) => {
-  toast.value = message
-  setTimeout(() => {
-    toast.value = ''
-  }, 2000)
+const collectBlueGem = async () => {
+  await fetch('http://localhost:3000/move', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'collect_blue' })
+  })
 }
 
+const collectRedGem = async () => {
+  await fetch('http://localhost:3000/move', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'collect_red' })
+  })
+}
 // 初始化游戏
 const initGame = async () => {
   try {
@@ -222,8 +234,6 @@ onUnmounted(() => {
 }
 
 .maze {
-  min-height: 200px;
-  min-width: 200px;
   border: 1px solid #ccc;
 }
 

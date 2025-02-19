@@ -22,6 +22,8 @@ let gameState = {
   exit: { x: 0, y: 0 },
   gameOver: false,
   success: false,
+  autoCollect: false,
+  onGemType: 'none',
 };
 
 // 示例迷宫配置
@@ -39,7 +41,8 @@ const defaultMazeConfig = {
   monsters: [{ x: 2, y: 1 }, { x: 2, y: 3 }],
   exit: { x: 4, y: 2 },
   requiredBlueGems: 3,
-  requiredRedGems: 3
+  requiredRedGems: 3,
+  autoCollect: false
 };
 
 // 添加CORS支持
@@ -72,7 +75,7 @@ app.post('/resetGame', (req, res) => {
 
   const renderState = generateRenderState()
   console.log('重置后的游戏状态:', renderState)
-  
+
   if (mainWindow) {
     console.log('发送游戏状态到主窗口')
     mainWindow.webContents.send('renderGameState', renderState)
@@ -109,7 +112,13 @@ app.post('/move', async (req, res) => {
   }
   switch (action) {
     case 'forward':
-      result = moveForward();
+      result = doOperate('forward');
+      break;
+    case 'collect_blue':
+      result = doOperate('collect_blue');
+      break;
+    case 'collect_red':
+      result = doOperate('collect_red');
       break;
     case 'turnLeft':
       result = turnLeft();
@@ -121,6 +130,8 @@ app.post('/move', async (req, res) => {
 
   // 生成渲染状态
   const renderState = generateRenderState();
+
+  console.log('result:', result)
 
   // 添加提示消息
   if (result.hitWall) {
@@ -138,11 +149,7 @@ app.post('/move', async (req, res) => {
       mainWindow.webContents.send('showToast', result.message);
     }
   }
-  // if (result.monsterHit || result.reachedExit) {
-  //   setTimeout(async () => {
-  //     mainWindow.webContents.send('resetGame');
-  //   }, 2000);
-  // }
+
   await new Promise(resolve => {
     setTimeout(() => {
       res.json({
@@ -164,6 +171,7 @@ function resetGameState(config) {
   gameState.exit = { ...config.exit };
   gameState.requiredBlueGems = config.requiredBlueGems;
   gameState.requiredRedGems = config.requiredRedGems;
+  gameState.autoCollect = !!config.autoCollect;
   gameState.collectedBlueGems = 0;
   gameState.collectedRedGems = 0;
   gameState.exitOpen = false;
@@ -191,8 +199,7 @@ function generateRenderState() {
 }
 
 // 移动前进
-function moveForward() {
-  const nextPosition = getNextPosition();
+function doOperate(operate) {
   const result = {
     success: false,
     hitWall: false,
@@ -201,17 +208,22 @@ function moveForward() {
     monsterHit: false,
     reachedExit: false
   };
-
-  if (!isValidMove(nextPosition)) {
-    result.hitWall = true;
-    return result;
+  let nextPosition = null;
+  if (operate === 'forward') {
+    nextPosition = getNextPosition();
+  }
+  if (operate === 'forward') {
+    if (!isValidMove(nextPosition)) {
+      result.hitWall = true;
+      return result;
+    }
+    gameState.playerPosition = nextPosition;
   }
 
-  gameState.playerPosition = nextPosition;
   result.success = true;
 
   // 检查碰撞
-  return checkCollisions(result);
+  return checkCollisions(result, operate);
 }
 
 // 左转
@@ -245,7 +257,7 @@ function isValidMove(position) {
 }
 
 // 检查碰撞
-function checkCollisions(result) {
+function checkCollisions(result, operate) {
   const pos = gameState.playerPosition;
 
   // 检查宝石
@@ -253,15 +265,28 @@ function checkCollisions(result) {
   const redGemIndex = gameState.redGems.findIndex(g => g.x === pos.x && g.y === pos.y);
 
   if (blueGemIndex !== -1) {
-    gameState.blueGems.splice(blueGemIndex, 1);
-    gameState.collectedBlueGems++;
-    result.gemCollected = true;
+    if (gameState.autoCollect || operate === 'collect_blue') {
+      gameState.blueGems.splice(blueGemIndex, 1);
+      gameState.collectedBlueGems++;
+      result.gemCollected = true;
+      gameState.onGemType = 'none';
+    } else {
+      gameState.onGemType = 'blue';
+    }
     result.gemType = 'blue';
   } else if (redGemIndex !== -1) {
-    gameState.redGems.splice(redGemIndex, 1);
-    gameState.collectedRedGems++;
-    result.gemCollected = true;
+    if (gameState.autoCollect || operate === 'collect_red') {
+      gameState.redGems.splice(redGemIndex, 1);
+      gameState.collectedRedGems++;
+      result.gemCollected = true;
+      gameState.onGemType = 'none';
+    } else {
+      gameState.onGemType = 'red';
+    }
     result.gemType = 'red';
+  }
+  else {
+    gameState.onGemType = 'none';
   }
 
   // 检查怪物
