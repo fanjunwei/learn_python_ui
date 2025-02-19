@@ -198,21 +198,37 @@ const saveMap = async () => {
     return
   }
 
+  // 将地图数据转换为简单的 0/1 数组
+  const mazeArray = mapData.value.map(row => 
+    row.map(cell => cell.walkable ? 1 : 0)
+  )
+
+  // 创建一个只包含简单数据类型的配置对象
   const mapConfig = {
     title: `迷宫配置`,
-    maze: mapData.value.map(row => row.map(cell => cell.walkable ? 1 : 0)),
-    start: startPos.value,
-    blueGems: blueGems.value,
-    redGems: redGems.value,
-    monsters: monsters.value,
-    exit: exitPos.value,
+    maze: mazeArray,
+    start: {
+      x: startPos.value.x,
+      y: startPos.value.y
+    },
+    blueGems: blueGems.value.map(gem => ({ x: gem.x, y: gem.y })),
+    redGems: redGems.value.map(gem => ({ x: gem.x, y: gem.y })),
+    monsters: monsters.value.map(monster => ({ x: monster.x, y: monster.y })),
+    exit: {
+      x: exitPos.value.x,
+      y: exitPos.value.y
+    },
     requiredBlueGems: blueGems.value.length,
     requiredRedGems: redGems.value.length
   }
 
   try {
-    await ipcRenderer.invoke('save-map', mapConfig)
-    alert('地图保存成功！')
+    const result = await ipcRenderer.invoke('save-map', mapConfig)
+    if (result.success) {
+      alert('地图保存成功！')
+    } else {
+      alert('保存失败：' + result.message)
+    }
   } catch (error) {
     alert('保存失败：' + error.message)
   }
