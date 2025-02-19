@@ -10,11 +10,38 @@ class MazeController:
         self.base_url = base_url
         self.config = self.load_config()
 
+    def get_current_level(self) -> int:
+        """获取当前关卡"""
+        level_file = Path(__file__).parent / "level.txt"
+        if not level_file.exists():
+            return 0
+        try:
+            with open(level_file, "r") as f:
+                return int(f.read())
+        except Exception as e:
+            print(f"读取关卡文件失败: {e}")
+            return 0
+
+    def save_current_level(self, level: int):
+        """保存当前关卡"""
+        level_file = Path(__file__).parent / "level.txt"
+        with open(level_file, "w") as f:
+            f.write(str(level))
+
+    def next_level(self):
+        """进入下一关"""
+        self.save_current_level(self.get_current_level() + 1)
+        self.config = self.load_config()
+        self.reset_game()
+
     def load_config(self) -> Dict[str, Any]:
         """加载TOML配置文件"""
         configs_dir = Path(__file__).parent / "configs"
         paths = list(configs_dir.glob("*.toml"))
-        config_path = paths[0]
+        paths.sort()
+        current_level = self.get_current_level()
+        current_level = current_level % len(paths)
+        config_path = paths[current_level]
         try:
             with open(config_path, "rb") as f:
                 config = tomli.load(f)
@@ -46,7 +73,11 @@ class MazeController:
     def move_forward(self) -> Dict[str, Any]:
         """向前移动"""
         response = requests.post(f"{self.base_url}/move", json={"action": "forward"})
-        return response.json()
+        data = response.json()
+        gameState = data.get("gameState")
+        if gameState.get("gameOver") and gameState.get("success"):
+            self.next_level()
+        return data
 
     def turn_left(self) -> Dict[str, Any]:
         """向左转"""

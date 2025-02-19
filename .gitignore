@@ -43,3 +43,4 @@ release/
 .DS_Store
 Thumbs.db 
 /venv/
+/level.txt
