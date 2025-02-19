@@ -82,6 +82,18 @@ class MazeController:
         )
         return response.json()
 
+    def is_on_blue_gem(self) -> bool:
+        """判断是否在蓝宝石上"""
+        game_state = self.get_game_state().get("gameState")
+        on_gem_type = game_state.get("onGemType")
+        return on_gem_type == "blue"
+
+    def is_on_red_gem(self) -> bool:
+        """判断是否在红宝石上"""
+        game_state = self.get_game_state().get("gameState")
+        on_gem_type = game_state.get("onGemType")
+        return on_gem_type == "red"
+
 
 controller = MazeController()
 controller.reset_game()
