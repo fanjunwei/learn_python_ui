@@ -76,11 +76,42 @@ const gameState = ref({
 const bgm = ref(new Audio(new URL('@/assets/audio/bgm.mp3', import.meta.url).href))
 bgm.value.loop = true
 
+// 淡出背景音乐
+const fadeOutBgm = () => {
+  const fadeOutInterval = 50 // 每50毫秒调整一次音量
+  const fadeOutStep = 0.05 // 每次减小0.05
+  const fadeOutDuration = 1000 // 总共1秒完成淡出
+
+  let currentVolume = bgm.value.volume
+  const steps = fadeOutDuration / fadeOutInterval
+
+  const interval = setInterval(() => {
+    currentVolume = Math.max(0, currentVolume - fadeOutStep)
+    bgm.value.volume = currentVolume
+
+    if (currentVolume <= 0) {
+      clearInterval(interval)
+      bgm.value.pause()
+      bgm.value.currentTime = 0
+      bgm.value.volume = 1 // 重置音量为默认值
+    }
+  }, fadeOutInterval)
+}
+
 // 监听游戏状态变化
 watch(() => gameState.value.gameOver, (newValue) => {
   if (newValue) {
-    bgm.value.pause()
-    bgm.value.currentTime = 0
+    if (!bgm.value.paused) {
+      fadeOutBgm()
+    }
+  } else {
+    if (bgm.value.paused) {
+      bgm.value.volume = 1
+      bgm.value.currentTime = 0
+      bgm.value.play().catch(error => {
+        console.warn('背景音乐播放失败:', error)
+      })
+    }
   }
 })
 
@@ -353,6 +384,7 @@ onUnmounted(() => {
 .gem.blue {
   background-position: -40px 0;
 }
+
 .monster {
   position: absolute;
   width: 40px;
@@ -362,6 +394,7 @@ onUnmounted(() => {
   background-size: 160px 160px;
   animation: play_monster 1.5s steps(4) infinite;
 }
+
 @keyframes play_monster {
   from {
     background-position: 0 0;
@@ -371,6 +404,7 @@ onUnmounted(() => {
     background-position: -160px 0;
   }
 }
+
 .gate {
   position: absolute;
   width: 40px;
