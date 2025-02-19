@@ -18,11 +18,11 @@
               墙壁
             </el-radio-button>
             <el-radio-button label="blueGem">
-              <el-icon><Sunny /></el-icon>
+              <div  class="gem-icon blue"></div>
               蓝宝石
             </el-radio-button>
             <el-radio-button label="redGem">
-              <el-icon><Star /></el-icon>
+              <div  class="gem-icon red"></div>
               红宝石
             </el-radio-button>
             <el-radio-button label="monster">
@@ -420,5 +420,22 @@ initMap()
 .size-input-x {
   margin-left: 5px;
   margin-right: 5px;
+}
+
+.gem-icon {
+  width: 14px;
+  height: 14px;
+  background-image: url('@/assets/gem.png');
+  background-repeat: no-repeat;
+  background-size: 28px 14px;
+  display: inline-block;
+}
+
+.gem-icon.red {
+  background-position: 0 0;
+}
+
+.gem-icon.blue {
+  background-position: -14px 0;
 }
 </style>
