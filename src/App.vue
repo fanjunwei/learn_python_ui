@@ -1,12 +1,22 @@
 <template>
-  <div class="app">
-    <div class="nav-bar">
-      <button @click="currentView = 'game'" :class="{ active: currentView === 'game' }">游戏</button>
-      <button @click="currentView = 'editor'" :class="{ active: currentView === 'editor' }">地图编辑器</button>
-    </div>
-    <MazeGame v-if="currentView === 'game'" />
-    <MapEditor v-if="currentView === 'editor'" />
-  </div>
+  <el-container class="app-container">
+    <el-header>
+      <el-menu mode="horizontal" :ellipsis="false" class="nav-menu">
+        <el-menu-item index="game" @click="currentView = 'game'">
+          <el-icon><GameController /></el-icon>
+          <span>游戏</span>
+        </el-menu-item>
+        <el-menu-item index="editor" @click="currentView = 'editor'">
+          <el-icon><Edit /></el-icon>
+          <span>地图编辑器</span>
+        </el-menu-item>
+      </el-menu>
+    </el-header>
+    <el-main>
+      <MazeGame v-if="currentView === 'game'" />
+      <MapEditor v-if="currentView === 'editor'" />
+    </el-main>
+  </el-container>
 </template>
 
 <script setup>
@@ -17,38 +27,25 @@ import MapEditor from './components/MapEditor.vue'
 const currentView = ref('game')
 </script>
 
-<style scoped>
-.app {
-  width: 100%;
+<style>
+.app-container {
   min-height: 100vh;
-  padding: 20px;
-  box-sizing: border-box;
-  background-color: #f0f0f0;
 }
 
-.nav-bar {
-  margin-bottom: 20px;
+.el-header {
+  padding: 0;
+  background-color: var(--el-bg-color);
+  box-shadow: var(--el-box-shadow-light);
+}
+
+.nav-menu {
+  height: 100%;
+}
+
+.el-main {
+  background-color: var(--el-bg-color-page);
   display: flex;
-  gap: 10px;
-}
-
-.nav-bar button {
-  padding: 10px 20px;
-  font-size: 16px;
-  border: none;
-  border-radius: 5px;
-  background: white;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  color: black;
-}
-
-.nav-bar button.active {
-  background: #4CAF50;
-  color: white;
-}
-
-.nav-bar button:hover:not(.active) {
-  background: #e0e0e0;
+  justify-content: center;
+  padding: 20px;
 }
 </style> 

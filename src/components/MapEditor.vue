@@ -1,34 +1,73 @@
 <template>
   <div class="editor-container">
-    <div class="toolbar">
-      <div class="size-controls">
-        宽度: <input type="number" v-model="width" min="5" max="20" @change="resizeMap">
-        高度: <input type="number" v-model="height" min="5" max="20" @change="resizeMap">
-      </div>
-      <div class="tool-controls">
-        <button :class="{ active: currentTool === 'wall' }" @click="currentTool = 'wall'">墙壁</button>
-        <button :class="{ active: currentTool === 'blueGem' }" @click="currentTool = 'blueGem'">蓝宝石</button>
-        <button :class="{ active: currentTool === 'redGem' }" @click="currentTool = 'redGem'">红宝石</button>
-        <button :class="{ active: currentTool === 'monster' }" @click="currentTool = 'monster'">怪物</button>
-        <button :class="{ active: currentTool === 'start' }" @click="currentTool = 'start'">起点</button>
-        <button :class="{ active: currentTool === 'exit' }" @click="currentTool = 'exit'">终点</button>
-        <button :class="{ active: currentTool === 'eraser' }" @click="currentTool = 'eraser'">橡皮擦</button>
-      </div>
-      <div class="file-controls">
-        <button @click="loadMap">加载地图</button>
-        <button @click="saveMap">保存地图</button>
-      </div>
-    </div>
+    <el-card class="toolbar-card">
+      <el-row :gutter="20">
+        <el-col :span="6">
+          <el-form label-position="top" class="size-controls">
+            <el-form-item label="地图尺寸">
+              <el-input-number v-model="width" :min="5" :max="20" @change="resizeMap" class="size-input" />
+              x
+              <el-input-number v-model="height" :min="5" :max="20" @change="resizeMap" class="size-input" />
+            </el-form-item>
+          </el-form>
+        </el-col>
+        <el-col :span="12">
+          <el-radio-group v-model="currentTool" class="tool-controls">
+            <el-radio-button label="wall">
+              <el-icon><Picture /></el-icon>
+              墙壁
+            </el-radio-button>
+            <el-radio-button label="blueGem">
+              <el-icon><Sunny /></el-icon>
+              蓝宝石
+            </el-radio-button>
+            <el-radio-button label="redGem">
+              <el-icon><Star /></el-icon>
+              红宝石
+            </el-radio-button>
+            <el-radio-button label="monster">
+              <el-icon><Warning /></el-icon>
+              怪物
+            </el-radio-button>
+            <el-radio-button label="start">
+              <el-icon><Position /></el-icon>
+              起点
+            </el-radio-button>
+            <el-radio-button label="exit">
+              <el-icon><Flag /></el-icon>
+              终点
+            </el-radio-button>
+            <el-radio-button label="eraser">
+              <el-icon><Delete /></el-icon>
+              橡皮擦
+            </el-radio-button>
+          </el-radio-group>
+        </el-col>
+        <el-col :span="6">
+          <div class="file-controls">
+            <el-button type="primary" @click="loadMap">
+              <el-icon><Folder /></el-icon>
+              加载地图
+            </el-button>
+            <el-button type="success" @click="saveMap">
+              <el-icon><Download /></el-icon>
+              保存地图
+            </el-button>
+          </div>
+        </el-col>
+      </el-row>
+    </el-card>
 
-    <div class="map-grid" :style="gridStyle">
-      <div v-for="(row, y) in mapData" :key="y" class="map-row">
-        <div v-for="(cell, x) in row" :key="x" class="map-cell" :class="getCellClasses(x, y)"
-          @click="handleCellClick(x, y)" @mouseover="handleCellHover(x, y)" @mousedown="isDrawing = true"
-          @mouseup="isDrawing = false">
+    <el-card class="map-card">
+      <div class="map-grid" :style="gridStyle">
+        <div v-for="(row, y) in mapData" :key="y" class="map-row">
+          <div v-for="(cell, x) in row" :key="x" class="map-cell" :class="getCellClasses(x, y)"
+            @click="handleCellClick(x, y)" @mouseover="handleCellHover(x, y)" @mousedown="isDrawing = true"
+            @mouseup="isDrawing = false">
+          </div>
         </div>
       </div>
-    </div>
-    <div v-if="toast" class="toast">{{ toast }}</div>
+    </el-card>
   </div>
 </template>
 
@@ -50,13 +89,77 @@ const redGems = ref([])
 const monsters = ref([])
 const startPos = ref(null)
 const exitPos = ref(null)
-const toast = ref(null)
 
-const showToast = (message) => {
-  toast.value = message
-  setTimeout(() => {
-    toast.value = null
-  }, 2000)
+// 保存地图
+const saveMap = async () => {
+  if (!startPos.value || !exitPos.value) {
+    ElMessage.warning('请设置起点和终点！')
+    return
+  }
+
+  // 将地图数据转换为简单的 0/1 数组
+  const mazeArray = mapData.value.map(row =>
+    row.map(cell => cell.walkable ? 1 : 0)
+  )
+
+  // 创建一个只包含简单数据类型的配置对象
+  const mapConfig = {
+    title: `迷宫配置`,
+    maze: mazeArray,
+    start: {
+      x: startPos.value.x,
+      y: startPos.value.y
+    },
+    blueGems: blueGems.value.map(gem => ({ x: gem.x, y: gem.y })),
+    redGems: redGems.value.map(gem => ({ x: gem.x, y: gem.y })),
+    monsters: monsters.value.map(monster => ({ x: monster.x, y: monster.y })),
+    exit: {
+      x: exitPos.value.x,
+      y: exitPos.value.y
+    },
+    requiredBlueGems: blueGems.value.length,
+    requiredRedGems: redGems.value.length
+  }
+
+  try {
+    const result = await ipcRenderer.invoke('save-map', mapConfig)
+    if (result.success) {
+      ElMessage.success('地图保存成功！')
+    } else if (result.message) {
+      ElMessage.error('保存失败：' + result.message)
+    }
+  } catch (error) {
+    ElMessage.error('保存失败：' + error.message)
+  }
+}
+
+// 加载地图
+const loadMap = async () => {
+  try {
+    const result = await ipcRenderer.invoke('load-map')
+    if (result.success) {
+      const config = result.data
+
+      // 更新地图尺寸
+      width.value = config.maze[0].length
+      height.value = config.maze.length
+
+      // 更新地图数据
+      mapData.value = config.maze
+
+      // 更新其他数据
+      blueGems.value = config.blueGems
+      redGems.value = config.redGems
+      monsters.value = config.monsters
+      startPos.value = config.start
+      exitPos.value = config.exit
+      ElMessage.success('地图加载成功！')
+    } else if (result.message) {
+      ElMessage.error('加载失败：' + result.message)
+    }
+  } catch (error) {
+    ElMessage.error('加载失败：' + error.message)
+  }
 }
 
 // 初始化地图
@@ -196,112 +299,47 @@ const removeAllAtPosition = (x, y) => {
   }
 }
 
-// 保存地图
-const saveMap = async () => {
-  if (!startPos.value || !exitPos.value) {
-    showToast('请设置起点和终点！')
-    return
-  }
-
-  // 将地图数据转换为简单的 0/1 数组
-  const mazeArray = mapData.value.map(row =>
-    row.map(cell => cell.walkable ? 1 : 0)
-  )
-
-  // 创建一个只包含简单数据类型的配置对象
-  const mapConfig = {
-    title: `迷宫配置`,
-    maze: mazeArray,
-    start: {
-      x: startPos.value.x,
-      y: startPos.value.y
-    },
-    blueGems: blueGems.value.map(gem => ({ x: gem.x, y: gem.y })),
-    redGems: redGems.value.map(gem => ({ x: gem.x, y: gem.y })),
-    monsters: monsters.value.map(monster => ({ x: monster.x, y: monster.y })),
-    exit: {
-      x: exitPos.value.x,
-      y: exitPos.value.y
-    },
-    requiredBlueGems: blueGems.value.length,
-    requiredRedGems: redGems.value.length
-  }
-
-  try {
-    const result = await ipcRenderer.invoke('save-map', mapConfig)
-    if (result.success) {
-      showToast('地图保存成功！')
-    } else if (result.message) {
-      showToast('保存失败：' + result.message)
-    }
-  } catch (error) {
-    showToast('保存失败：' + error.message)
-  }
-}
-
-// 加载地图
-const loadMap = async () => {
-  try {
-    const result = await ipcRenderer.invoke('load-map')
-    if (result.success) {
-      const config = result.data
-
-      // 更新地图尺寸
-      width.value = config.maze[0].length
-      height.value = config.maze.length
-
-      // 更新地图数据
-      mapData.value = config.maze
-
-      // 更新其他数据
-      blueGems.value = config.blueGems
-      redGems.value = config.redGems
-      monsters.value = config.monsters
-      startPos.value = config.start
-      exitPos.value = config.exit
-    } else if (result.message) {
-      showToast('加载失败：' + result.message)
-    }
-  } catch (error) {
-    showToast('加载失败：' + error.message)
-  }
-}
-
 // 初始化
 initMap()
 </script>
 
 <style scoped>
 .editor-container {
-  padding: 20px;
+  width: 100%;
+  max-width: 1200px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  gap: 20px;
 }
 
-.toolbar {
+.toolbar-card {
   margin-bottom: 20px;
+}
+
+.size-controls {
   display: flex;
-  gap: 20px;
   align-items: center;
+}
+
+.size-input {
+  width: 80px;
 }
 
 .tool-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
-.tool-controls button {
-  padding: 8px 16px;
-  border: 1px solid #ccc;
-  background: white;
-  cursor: pointer;
-  color: black;
+.file-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
-.tool-controls button.active {
-  background: #4CAF50;
-  color: white;
+.map-card {
+  padding: 20px;
+  background: var(--el-bg-color);
 }
 
 .map-grid {
@@ -324,6 +362,11 @@ initMap()
   cursor: pointer;
   border: 1px solid #ccc;
   box-sizing: border-box;
+  transition: all 0.3s;
+}
+
+.map-cell:hover {
+  border-color: var(--el-color-primary);
 }
 
 .map-cell.wall {
@@ -368,35 +411,11 @@ initMap()
 }
 
 .map-cell.start {
-  background: #4CAF50;
+  background: var(--el-color-success-light-5);
 }
 
 .map-cell.exit {
   background: url('@/assets/gate.png') 0 0;
   background-size: 40px 160px;
-}
-
-input[type="number"] {
-  width: 60px;
-  padding: 4px;
-  margin: 0 10px;
-}
-
-.file-controls {
-  display: flex;
-  gap: 10px;
-}
-
-.file-controls button {
-  padding: 8px 16px;
-  background: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.file-controls button:hover {
-  background: #45a049;
 }
 </style>
