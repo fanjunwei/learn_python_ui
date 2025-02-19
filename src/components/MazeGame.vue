@@ -48,7 +48,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -70,6 +70,18 @@ const gameState = ref({
   success: false,
   onGemType: 'none',
   autoCollect: false,
+})
+
+// 背景音乐
+const bgm = ref(new Audio(new URL('@/assets/audio/bgm.mp3', import.meta.url).href))
+bgm.value.loop = true
+
+// 监听游戏状态变化
+watch(() => gameState.value.gameOver, (newValue) => {
+  if (newValue) {
+    bgm.value.pause()
+    bgm.value.currentTime = 0
+  }
 })
 
 // Toast消息
@@ -177,6 +189,10 @@ const initGame = async () => {
     if (data.success) {
       console.log('更新游戏状态:', data.gameState)
       gameState.value = data.gameState
+      // 开始播放背景音乐
+      bgm.value.play().catch(error => {
+        console.warn('背景音乐播放失败:', error)
+      })
     }
   } catch (error) {
     console.error('初始化游戏失败:', error)
@@ -224,6 +240,9 @@ onMounted(async () => {
 onUnmounted(() => {
   ipcRenderer.removeListener('renderGameState', handleRenderGameState)
   ipcRenderer.removeListener('showToast', handleShowToast)
+  // 停止背景音乐
+  bgm.value.pause()
+  bgm.value.currentTime = 0
 })
 </script>
 
