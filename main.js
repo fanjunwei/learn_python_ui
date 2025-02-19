@@ -208,7 +208,6 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL(`http://localhost:${port}`);
-    mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
   }
