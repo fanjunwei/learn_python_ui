@@ -1,5 +1,6 @@
 from maze_controller import controller
 
+controller.move_forward()
 controller.turn_right()
 controller.turn_right()
 controller.move_forward()

@@ -20,7 +20,7 @@ let gameState = {
   monsters: [],
   exitOpen: false,
   exit: { x: 0, y: 0 },
-  gameOver: false,
+  gameOver: null,
   success: false,
   autoCollect: false,
   onGemType: 'none',
@@ -136,18 +136,22 @@ app.post('/move', async (req, res) => {
   // 添加提示消息
   if (result.hitWall) {
     result.message = '撞墙了！';
+    mainWindow.webContents.send('playAudio', 'wall');
   } else if (result.gemCollected) {
     result.message = `获得${result.gemType === 'blue' ? '蓝' : '红'}宝石！`;
+    mainWindow.webContents.send('playAudio', 'gem');
   } else if (result.monsterHit) {
     result.message = '你被怪物抓住了！游戏结束！';
+    mainWindow.webContents.send('playAudio', 'monster');
   } else if (result.reachedExit) {
     result.message = '恭喜你完成迷宫！';
+    mainWindow.webContents.send('playAudio', 'complete');
   }
   if (result.success) {
     mainWindow.webContents.send('renderGameState', renderState);
-    if (result.message) {
-      mainWindow.webContents.send('showToast', result.message);
-    }
+  }
+  if (result.message) {
+    mainWindow.webContents.send('showToast', result.message);
   }
 
   await new Promise(resolve => {

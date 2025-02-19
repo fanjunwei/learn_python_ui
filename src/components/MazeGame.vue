@@ -66,7 +66,7 @@ const gameState = ref({
   collectedRedGems: 0,
   requiredBlueGems: 0,
   requiredRedGems: 0,
-  gameOver: false,
+  gameOver: null,
   success: false,
   onGemType: 'none',
   autoCollect: false,
@@ -75,7 +75,10 @@ const gameState = ref({
 // 背景音乐
 const bgm = ref(new Audio(new URL('@/assets/audio/bgm.mp3', import.meta.url).href))
 bgm.value.loop = true
-
+const getGemAudio = ref(new Audio(new URL('@/assets/audio/get_gem.mp3', import.meta.url).href))
+const getMonsterAudio = ref(new Audio(new URL('@/assets/audio/get_monster.mp3', import.meta.url).href))
+const completeAudio = ref(new Audio(new URL('@/assets/audio/complete.mp3', import.meta.url).href))
+const wallAudio = ref(new Audio(new URL('@/assets/audio/wall.mp3', import.meta.url).href))
 // 淡出背景音乐
 const fadeOutBgm = () => {
   const fadeOutInterval = 50 // 每50毫秒调整一次音量
@@ -100,6 +103,7 @@ const fadeOutBgm = () => {
 
 // 监听游戏状态变化
 watch(() => gameState.value.gameOver, (newValue) => {
+  console.log('游戏状态变化:', newValue)
   if (newValue) {
     if (!bgm.value.paused) {
       fadeOutBgm()
@@ -220,10 +224,6 @@ const initGame = async () => {
     if (data.success) {
       console.log('更新游戏状态:', data.gameState)
       gameState.value = data.gameState
-      // 开始播放背景音乐
-      bgm.value.play().catch(error => {
-        console.warn('背景音乐播放失败:', error)
-      })
     }
   } catch (error) {
     console.error('初始化游戏失败:', error)
@@ -245,11 +245,23 @@ const handleShowToast = (event, message) => {
   showToast(message)
 }
 
+const handlePlayAudio = (event, audioType) => {
+  if (audioType === 'gem') {
+    getGemAudio.value.play()
+  } else if (audioType === 'monster') {
+    getMonsterAudio.value.play()
+  } else if (audioType === 'complete') {
+    completeAudio.value.play()
+  } else if (audioType === 'wall') {
+    wallAudio.value.play()
+  }
+}
 // 监听服务器消息
 onMounted(async () => {
   console.log('组件已挂载')
   ipcRenderer.on('renderGameState', handleRenderGameState)
   ipcRenderer.on('showToast', handleShowToast)
+  ipcRenderer.on('playAudio', handlePlayAudio)
 
   // 初始化游戏
   await initGame()
