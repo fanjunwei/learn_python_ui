@@ -58,6 +58,18 @@ class MazeController:
         response = requests.post(f"{self.base_url}/move", json={"action": "turnRight"})
         return response.json()
 
+    def collect_blue_gem(self) -> Dict[str, Any]:
+        """收集蓝宝石"""
+        response = requests.post(f"{self.base_url}/move", json={"action": "collect_blue"})
+        return response.json()
+
+    def collect_red_gem(self) -> Dict[str, Any]:
+        """收集红宝石"""
+        response = requests.post(
+            f"{self.base_url}/move", json={"action": "collect_red"}
+        )
+        return response.json()
+
     def reset_game(self, custom_config: Dict[str, Any] = None) -> Dict[str, Any]:
         """重置游戏"""
         config_to_use = custom_config if custom_config else self.config

@@ -29,7 +29,7 @@
             <div v-if="isExit(x, y)" class="gate" :class="{ 'open': gameState.exitOpen }">
             </div>
             <!-- 玩家 -->
-            <div v-if="isPlayerPosition(x, y)" :class="playerClass">
+            <div v-if="isPlayerPosition(x, y) && !gameState.gameOver" :class="playerClass">
             </div>
 
           </div>
@@ -74,6 +74,14 @@ const gameState = ref({
 
 // Toast消息
 const toast = ref('')
+
+// 显示提示消息
+const showToast = (message) => {
+  toast.value = message
+  setTimeout(() => {
+    toast.value = ''
+  }, 2000)
+}
 
 // 计算属性
 const mazeGridStyle = computed(() => {

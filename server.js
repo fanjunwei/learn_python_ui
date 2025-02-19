@@ -182,20 +182,7 @@ function resetGameState(config) {
 
 // 生成渲染状态
 function generateRenderState() {
-  return {
-    maze: gameState.maze,
-    playerPosition: gameState.playerPosition,
-    playerDirection: gameState.playerDirection,
-    blueGems: gameState.blueGems,
-    redGems: gameState.redGems,
-    monsters: gameState.monsters,
-    exit: gameState.exit,
-    exitOpen: gameState.exitOpen,
-    collectedBlueGems: gameState.collectedBlueGems,
-    collectedRedGems: gameState.collectedRedGems,
-    requiredBlueGems: gameState.requiredBlueGems,
-    requiredRedGems: gameState.requiredRedGems
-  };
+  return gameState;
 }
 
 // 移动前进
