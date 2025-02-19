@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { startServer, stopServer } = require('./server');
 const killPort = require('kill-port');
 
@@ -9,6 +10,68 @@ const serverPort = 3000;
 
 let mainWindow = null;
 let isQuitting = false;
+
+// 处理保存地图请求
+ipcMain.handle('save-map', async (event, mapConfig) => {
+  try {
+    const { filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: '保存地图',
+      defaultPath: path.join(app.getPath('documents'), 'maze-map.toml'),
+      filters: [
+        { name: 'TOML 文件', extensions: ['toml'] }
+      ]
+    });
+
+    if (filePath) {
+      // 将地图配置转换为 TOML 格式
+      const tomlContent = generateToml(mapConfig);
+      fs.writeFileSync(filePath, tomlContent, 'utf-8');
+      return { success: true };
+    }
+    return { success: false, message: '未选择保存位置' };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+// 生成 TOML 格式的内容
+function generateToml(config) {
+  const lines = [
+    `title = "${config.title}"`,
+    '',
+    '# 迷宫布局 (1: 可通过, 0: 墙壁)',
+    'maze = [',
+    ...config.maze.map(row => '  [' + row.join(', ') + '],'),
+    ']',
+    '',
+    '# 起点坐标',
+    `start = { x = ${config.start.x}, y = ${config.start.y} }`,
+    '',
+    '# 蓝宝石位置',
+    'blueGems = [',
+    ...config.blueGems.map(gem => `  { x = ${gem.x}, y = ${gem.y} },`),
+    ']',
+    '',
+    '# 红宝石位置',
+    'redGems = [',
+    ...config.redGems.map(gem => `  { x = ${gem.x}, y = ${gem.y} },`),
+    ']',
+    '',
+    '# 怪物位置',
+    'monsters = [',
+    ...config.monsters.map(monster => `  { x = ${monster.x}, y = ${monster.y} },`),
+    ']',
+    '',
+    '# 终点坐标',
+    `exit = { x = ${config.exit.x}, y = ${config.exit.y} }`,
+    '',
+    '# 所需宝石数量',
+    `requiredBlueGems = ${config.requiredBlueGems}`,
+    `requiredRedGems = ${config.requiredRedGems}`
+  ];
+
+  return lines.join('\n');
+}
 
 async function cleanup() {
   if (isQuitting) return;
