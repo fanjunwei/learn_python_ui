@@ -1,0 +1,93 @@
+title = "迷宫配置 013"
+maze = [
+    [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+    ],
+    [
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+    ],
+    [
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+    ],
+    [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+    ],
+    [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+    ],
+    [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+    ],
+    [
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+    ],
+    [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+    ],
+]
+blueGems = [
+    { x = 5, y = 0 },
+    { x = 2, y = 7 },
+    { x = 0, y = 7 },
+    { x = 5, y = 7 },
+]
+redGems = [
+    { x = 0, y = 4 },
+    { x = 2, y = 3 },
+    { x = 2, y = 6 },
+]
+monsters = [
+    { x = 5, y = 4 },
+    { x = 4, y = 7 },
+    { x = 0, y = 6 },
+]
+requiredBlueGems = 4
+requiredRedGems = 3
+
+[start]
+x = 0
+y = 0
+
+[exit]
+x = 5
+y = 6

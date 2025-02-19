@@ -82,7 +82,9 @@ def generate_all_maps():
     for i in range(1, 22):  # 从002开始，因为001已经存在
         config = generate_map_config(i)
         config_path = configs_dir / f"{i:03d}_config.toml"
-
+        if config_path.exists():
+            print(f"地图配置 {config_path} 已存在")
+            continue
         with open(config_path, "wb") as f:
             tomli_w.dump(config, f)
         print(f"生成地图配置: {config_path}")

@@ -11,14 +11,10 @@ maze = [
 start = { x = 0, y = 0 }
 
 # 蓝宝石位置
-blueGems = [
-  { x = 0, y = 1 },
-]
+blueGems = []
 
 # 红宝石位置
-redGems = [
-  { x = 1, y = 1 },
-]
+redGems = []
 
 # 怪物位置
 monsters = [
@@ -28,5 +24,5 @@ monsters = [
 exit = { x = 2, y = 2 }
 
 # 所需宝石数量
-requiredBlueGems = 1
-requiredRedGems = 1
+requiredBlueGems = 0
+requiredRedGems = 0

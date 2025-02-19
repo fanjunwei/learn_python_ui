@@ -2,12 +2,12 @@
   <div class="game-container">
     <div class="status-bar">
       <div class="gem-counter">
-        <div class="gem-count">
+        <div v-if="gameState.requiredBlueGems > 0" class="gem-count">
           <div class="gem-icon blue"></div>
           <span>{{ gameState.collectedBlueGems }}/{{ gameState.requiredBlueGems }}</span>
         </div>
-        <div class="gem-count">
-          <div class="gem-icon red"></div>
+        <div v-if="gameState.requiredRedGems > 0" class="gem-count">
+          <div  class="gem-icon red"></div>
           <span>{{ gameState.collectedRedGems }}/{{ gameState.requiredRedGems }}</span>
         </div>
       </div>
