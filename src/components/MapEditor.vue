@@ -15,6 +15,7 @@
         <button :class="{ active: currentTool === 'eraser' }" @click="currentTool = 'eraser'">橡皮擦</button>
       </div>
       <div class="file-controls">
+        <button @click="loadMap">加载地图</button>
         <button @click="saveMap">保存地图</button>
       </div>
     </div>
@@ -234,6 +235,34 @@ const saveMap = async () => {
   }
 }
 
+// 加载地图
+const loadMap = async () => {
+  try {
+    const result = await ipcRenderer.invoke('load-map')
+    if (result.success) {
+      const config = result.data
+      
+      // 更新地图尺寸
+      width.value = config.maze[0].length
+      height.value = config.maze.length
+      
+      // 更新地图数据
+      mapData.value = config.maze
+      
+      // 更新其他数据
+      blueGems.value = config.blueGems
+      redGems.value = config.redGems
+      monsters.value = config.monsters
+      startPos.value = config.start
+      exitPos.value = config.exit
+    } else {
+      alert('加载失败：' + result.message)
+    }
+  } catch (error) {
+    alert('加载失败：' + error.message)
+  }
+}
+
 // 初始化
 initMap()
 </script>
@@ -343,6 +372,11 @@ input[type="number"] {
   width: 60px;
   padding: 4px;
   margin: 0 10px;
+}
+
+.file-controls {
+  display: flex;
+  gap: 10px;
 }
 
 .file-controls button {

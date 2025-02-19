@@ -73,6 +73,107 @@ function generateToml(config) {
   return lines.join('\n');
 }
 
+// 处理加载地图请求
+ipcMain.handle('load-map', async (event) => {
+  try {
+    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: '加载地图',
+      defaultPath: app.getPath('documents'),
+      filters: [
+        { name: 'TOML 文件', extensions: ['toml'] }
+      ],
+      properties: ['openFile']
+    });
+
+    if (filePaths && filePaths.length > 0) {
+      const content = fs.readFileSync(filePaths[0], 'utf-8');
+      // 将 0/1 数组转换为 walkable 对象数组
+      const config = parseToml(content);
+      return { 
+        success: true, 
+        data: {
+          ...config,
+          maze: config.maze.map(row => row.map(cell => ({ walkable: cell === 1 })))
+        }
+      };
+    }
+    return { success: false, message: '未选择文件' };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+// 解析 TOML 格式的内容
+function parseToml(content) {
+  const lines = content.split('\n');
+  const config = {
+    title: '',
+    maze: [],
+    start: { x: 0, y: 0 },
+    blueGems: [],
+    redGems: [],
+    monsters: [],
+    exit: { x: 0, y: 0 },
+    requiredBlueGems: 0,
+    requiredRedGems: 0
+  };
+
+  let currentSection = '';
+  let currentArray = [];
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine || trimmedLine.startsWith('#')) continue;
+
+    if (trimmedLine.startsWith('title')) {
+      config.title = trimmedLine.split('=')[1].trim().replace(/"/g, '');
+    } else if (trimmedLine.startsWith('maze')) {
+      currentSection = 'maze';
+    } else if (trimmedLine.startsWith('start')) {
+      const coords = trimmedLine.match(/x = (\d+), y = (\d+)/);
+      if (coords) {
+        config.start = { x: parseInt(coords[1]), y: parseInt(coords[2]) };
+      }
+    } else if (trimmedLine.startsWith('blueGems')) {
+      currentSection = 'blueGems';
+      currentArray = [];
+    } else if (trimmedLine.startsWith('redGems')) {
+      currentSection = 'redGems';
+      currentArray = [];
+    } else if (trimmedLine.startsWith('monsters')) {
+      currentSection = 'monsters';
+      currentArray = [];
+    } else if (trimmedLine.startsWith('exit')) {
+      const coords = trimmedLine.match(/x = (\d+), y = (\d+)/);
+      if (coords) {
+        config.exit = { x: parseInt(coords[1]), y: parseInt(coords[2]) };
+      }
+    } else if (trimmedLine.startsWith('requiredBlueGems')) {
+      config.requiredBlueGems = parseInt(trimmedLine.split('=')[1]);
+    } else if (trimmedLine.startsWith('requiredRedGems')) {
+      config.requiredRedGems = parseInt(trimmedLine.split('=')[1]);
+    } else if (trimmedLine.includes('[') && !trimmedLine.includes('=')) {
+      const numbers = trimmedLine.replace(/[\[\],\s]/g, ' ').trim().split(/\s+/);
+      if (currentSection === 'maze') {
+        if (numbers.length > 0) {
+          config.maze.push(numbers.map(n => parseInt(n)));
+        }
+      }
+    } else if (trimmedLine.includes('x =')) {
+      const coords = trimmedLine.match(/x = (\d+), y = (\d+)/);
+      if (coords && currentSection) {
+        const pos = { x: parseInt(coords[1]), y: parseInt(coords[2]) };
+        currentArray.push(pos);
+        if (currentSection === 'blueGems') config.blueGems = [...currentArray];
+        if (currentSection === 'redGems') config.redGems = [...currentArray];
+        if (currentSection === 'monsters') config.monsters = [...currentArray];
+      }
+    }
+  }
+
+  return config;
+}
+
 async function cleanup() {
   if (isQuitting) return;
   isQuitting = true;
