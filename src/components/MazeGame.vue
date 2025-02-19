@@ -12,13 +12,7 @@
     <div id="maze" class="maze" :style="mazeGridStyle">
       <template v-if="gameState.maze && gameState.maze.length > 0">
         <div v-for="(row, y) in gameState.maze" :key="y" class="maze-row">
-          <div v-for="(cell, x) in row" :key="x" 
-               class="cell" 
-               :class="{ 'wall': !cell.walkable }">
-            <!-- 玩家 -->
-            <div v-if="isPlayerPosition(x, y)" 
-                 :class="playerClass">
-            </div>
+          <div v-for="(cell, x) in row" :key="x" class="cell" :class="{ 'wall': !cell.walkable }">
             <!-- 蓝宝石 -->
             <div v-if="hasBluGem(x, y)" class="gem blue"></div>
             <!-- 红宝石 -->
@@ -26,10 +20,12 @@
             <!-- 怪物 -->
             <div v-if="hasMonster(x, y)" class="monster"></div>
             <!-- 出口 -->
-            <div v-if="isExit(x, y)" 
-                 class="exit"
-                 :class="{ 'open': gameState.exitOpen }">
+            <div v-if="isExit(x, y)" class="gate" :class="{ 'open': gameState.exitOpen }">
             </div>
+            <!-- 玩家 -->
+            <div v-if="isPlayerPosition(x, y)" :class="playerClass">
+            </div>
+
           </div>
         </div>
       </template>
@@ -181,10 +177,10 @@ onMounted(async () => {
   console.log('组件已挂载')
   ipcRenderer.on('renderGameState', handleRenderGameState)
   ipcRenderer.on('showToast', handleShowToast)
-  
+
   // 初始化游戏
   await initGame()
-  
+
   // 获取当前游戏状态
   try {
     const response = await fetch('http://localhost:3000/getGameState')
@@ -224,66 +220,125 @@ onUnmounted(() => {
   min-width: 200px;
   border: 1px solid #ccc;
 }
+
 .sprite {
-    position: absolute;
-    width: 40px; /* 每帧的宽度 */
-    height: 40px; /* 每帧的高度 */
-    background-image: url('@/assets/dog_sprite.png'); /* 精灵图的路径 */
-    background-repeat: no-repeat; /* 不重复背景 */
-    background-size: 160px 160px;
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background-image: url('@/assets/dog_sprite.png');
+  background-repeat: no-repeat;
+  background-size: 160px 160px;
 }
 
 .sprite.down {
-    animation: play_down 1.5s steps(4) infinite;
+  animation: play_down 1.5s steps(4) infinite;
 }
 
 .sprite.up {
-    animation: play_up 1.5s steps(4) infinite;
+  animation: play_up 1.5s steps(4) infinite;
 }
 
 .sprite.left {
-    animation: play_left 1.5s steps(4) infinite;
+  animation: play_left 1.5s steps(4) infinite;
 }
 
 .sprite.right {
-    animation: play_right 1.5s steps(4) infinite;
+  animation: play_right 1.5s steps(4) infinite;
 }
 
 @keyframes play_down {
-    from {
-        background-position: 0 0; /* 从第一帧开始 */
-    }
-    to {
-        background-position: -160px 0; /* 到最后一帧结束 */
-    }
+  from {
+    background-position: 0 0;
+    /* 从第一帧开始 */
+  }
+
+  to {
+    background-position: -160px 0;
+    /* 到最后一帧结束 */
+  }
 }
 
 @keyframes play_up {
-    from {
-        background-position: 0 -80px; /* 从第一帧开始 */
-    }
-    to {
-        background-position: -160px -80px; /* 到最后一帧结束 */
-    }
+  from {
+    background-position: 0 -80px;
+    /* 从第一帧开始 */
+  }
+
+  to {
+    background-position: -160px -80px;
+    /* 到最后一帧结束 */
+  }
 }
 
 @keyframes play_left {
-    from {
-        background-position: 0 -40px; /* 从第一帧开始 */
-    }
-    to {
-        background-position: -160px -40px; /* 到最后一帧结束 */
-    }
+  from {
+    background-position: 0 -40px;
+    /* 从第一帧开始 */
+  }
+
+  to {
+    background-position: -160px -40px;
+    /* 到最后一帧结束 */
+  }
 }
 
 @keyframes play_right {
-    from {
-        background-position: 0 -120px; /* 从第一帧开始 */
-    }
-    to {
-        background-position: -160px -120px; /* 到最后一帧结束 */
-    }
+  from {
+    background-position: 0 -120px;
+    /* 从第一帧开始 */
+  }
+
+  to {
+    background-position: -160px -120px;
+    /* 到最后一帧结束 */
+  }
 }
 
+.gem {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background-image: url('@/assets/gem.png');
+  background-repeat: no-repeat;
+  background-size: 80px 40px;
+}
 
-</style> 
+.gem.red {
+  background-position: 0 0;
+}
+
+.gem.blue {
+  background-position: -40px 0;
+}
+.monster {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background-image: url('@/assets/monster.png');
+  background-repeat: no-repeat;
+  background-size: 160px 160px;
+  animation: play_monster 1.5s steps(4) infinite;
+}
+@keyframes play_monster {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: -160px 0;
+  }
+}
+.gate {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background-image: url('@/assets/gate.png');
+  background-repeat: no-repeat;
+  background-size: 40px 160px;
+  background-position: 0 0;
+}
+
+.gate.open {
+  background-position: 0 -120px;
+}
+</style>
