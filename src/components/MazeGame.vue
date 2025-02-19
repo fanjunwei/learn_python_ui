@@ -2,8 +2,14 @@
   <div class="game-container">
     <div class="status-bar">
       <div class="gem-counter">
-        <span>蓝宝石: <span>{{ gameState.collectedBlueGems }}</span>/<span>{{ gameState.requiredBlueGems }}</span></span>
-        <span>红宝石: <span>{{ gameState.collectedRedGems }}</span>/<span>{{ gameState.requiredRedGems }}</span></span>
+        <div class="gem-count">
+          <div class="gem-icon blue"></div>
+          <span>{{ gameState.collectedBlueGems }}/{{ gameState.requiredBlueGems }}</span>
+        </div>
+        <div class="gem-count">
+          <div class="gem-icon red"></div>
+          <span>{{ gameState.collectedRedGems }}/{{ gameState.requiredRedGems }}</span>
+        </div>
       </div>
       <div class="exit-status">
         出口状态: <span>{{ gameState.exitOpen ? '开启' : '关闭' }}</span>
@@ -340,5 +346,39 @@ onUnmounted(() => {
 
 .gate.open {
   background-position: 0 -120px;
+}
+
+.gem-counter {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.gem-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gem-icon {
+  width: 24px;
+  height: 24px;
+  background-image: url('@/assets/gem.png');
+  background-repeat: no-repeat;
+  background-size: 48px 24px;
+}
+
+.gem-icon.red {
+  background-position: 0 0;
+}
+
+.gem-icon.blue {
+  background-position: -24px 0;
+}
+
+.gem-count span {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
 }
 </style>
