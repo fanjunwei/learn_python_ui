@@ -11,25 +11,26 @@ const serverPort = 3000;
 
 let mainWindow = null;
 let isQuitting = false;
-
+let lastFilePath = null;
 // 处理保存地图请求
 ipcMain.handle('save-map', async (event, mapConfig) => {
   try {
     const { filePath } = await dialog.showSaveDialog(mainWindow, {
       title: '保存地图',
-      defaultPath: path.join(app.getPath('documents'), 'maze-map.toml'),
+      defaultPath: lastFilePath || path.join(app.getPath('documents'), 'maze-map.toml'),
       filters: [
         { name: 'TOML 文件', extensions: ['toml'] }
       ]
     });
 
     if (filePath) {
+      lastFilePath = filePath;
       // 将地图配置转换为 TOML 格式
       const tomlContent = TOML.stringify(mapConfig)
       fs.writeFileSync(filePath, tomlContent, 'utf-8');
       return { success: true };
     }
-    return { success: false, message: '未选择保存位置' };
+    return { success: false, message: null };
   } catch (error) {
     return { success: false, message: error.message };
   }
@@ -40,7 +41,7 @@ ipcMain.handle('load-map', async (event) => {
   try {
     const { filePaths } = await dialog.showOpenDialog(mainWindow, {
       title: '加载地图',
-      defaultPath: app.getPath('documents'),
+      defaultPath: lastFilePath || app.getPath('documents'),
       filters: [
         { name: 'TOML 文件', extensions: ['toml'] }
       ],
@@ -48,6 +49,7 @@ ipcMain.handle('load-map', async (event) => {
     });
 
     if (filePaths && filePaths.length > 0) {
+      lastFilePath = filePaths[0];
       const content = fs.readFileSync(filePaths[0], 'utf-8');
       // 解析 TOML 内容
       const config = TOML.parse(content);
@@ -59,7 +61,7 @@ ipcMain.handle('load-map', async (event) => {
         }
       };
     }
-    return { success: false, message: '未选择文件' };
+    return { success: false, message: null };
   } catch (error) {
     return { success: false, message: error.message };
   }

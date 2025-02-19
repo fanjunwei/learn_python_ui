@@ -28,6 +28,7 @@
         </div>
       </div>
     </div>
+    <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
 </template>
 
@@ -49,6 +50,14 @@ const redGems = ref([])
 const monsters = ref([])
 const startPos = ref(null)
 const exitPos = ref(null)
+const toast = ref(null)
+
+const showToast = (message) => {
+  toast.value = message
+  setTimeout(() => {
+    toast.value = null
+  }, 2000)
+}
 
 // 初始化地图
 const initMap = () => {
@@ -190,7 +199,7 @@ const removeAllAtPosition = (x, y) => {
 // 保存地图
 const saveMap = async () => {
   if (!startPos.value || !exitPos.value) {
-    alert('请设置起点和终点！')
+    showToast('请设置起点和终点！')
     return
   }
 
@@ -221,12 +230,12 @@ const saveMap = async () => {
   try {
     const result = await ipcRenderer.invoke('save-map', mapConfig)
     if (result.success) {
-      alert('地图保存成功！')
-    } else {
-      alert('保存失败：' + result.message)
+      showToast('地图保存成功！')
+    } else if (result.message) {
+      showToast('保存失败：' + result.message)
     }
   } catch (error) {
-    alert('保存失败：' + error.message)
+    showToast('保存失败：' + error.message)
   }
 }
 
@@ -250,11 +259,11 @@ const loadMap = async () => {
       monsters.value = config.monsters
       startPos.value = config.start
       exitPos.value = config.exit
-    } else {
-      alert('加载失败：' + result.message)
+    } else if (result.message) {
+      showToast('加载失败：' + result.message)
     }
   } catch (error) {
-    alert('加载失败：' + error.message)
+    showToast('加载失败：' + error.message)
   }
 }
 
