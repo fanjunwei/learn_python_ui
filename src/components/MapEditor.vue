@@ -7,38 +7,49 @@
             <el-form-item label="地图尺寸">
               <el-input-number v-model="width" :min="1" :max="20" @change="resizeMap" size="small" class="size-input" />
               <span class="size-input-x">x</span>
-              <el-input-number v-model="height" :min="1" :max="20" @change="resizeMap" size="small" class="size-input" />
+              <el-input-number v-model="height" :min="1" :max="20" @change="resizeMap" size="small"
+                class="size-input" />
             </el-form-item>
           </el-form>
         </el-col>
         <el-col :span="13">
           <el-radio-group v-model="currentTool">
             <el-radio-button label="wall">
-              <el-icon><Picture /></el-icon>
+              <el-icon>
+                <Picture />
+              </el-icon>
               墙壁
             </el-radio-button>
             <el-radio-button label="blueGem">
-              <div  class="gem-icon blue"></div>
+              <div class="gem-icon blue"></div>
               蓝宝石
             </el-radio-button>
             <el-radio-button label="redGem">
-              <div  class="gem-icon red"></div>
+              <div class="gem-icon red"></div>
               红宝石
             </el-radio-button>
             <el-radio-button label="monster">
-              <el-icon><Warning /></el-icon>
+              <el-icon>
+                <Warning />
+              </el-icon>
               怪物
             </el-radio-button>
             <el-radio-button label="start">
-              <el-icon><Position /></el-icon>
+              <el-icon>
+                <Position />
+              </el-icon>
               起点
             </el-radio-button>
             <el-radio-button label="exit">
-              <el-icon><Flag /></el-icon>
+              <el-icon>
+                <Flag />
+              </el-icon>
               终点
             </el-radio-button>
             <el-radio-button label="eraser">
-              <el-icon><Delete /></el-icon>
+              <el-icon>
+                <Delete />
+              </el-icon>
               橡皮擦
             </el-radio-button>
           </el-radio-group>
@@ -46,11 +57,15 @@
         <el-col :span="5">
           <div class="file-controls">
             <el-button type="primary" @click="loadMap">
-              <el-icon><Folder /></el-icon>
+              <el-icon>
+                <Folder />
+              </el-icon>
               加载地图
             </el-button>
             <el-button type="success" @click="saveMap">
-              <el-icon><Download /></el-icon>
+              <el-icon>
+                <Download />
+              </el-icon>
               保存地图
             </el-button>
           </div>
@@ -62,8 +77,8 @@
       <div class="map-grid" :style="gridStyle">
         <div v-for="(row, y) in mapData" :key="y" class="map-row">
           <div v-for="(cell, x) in row" :key="x" class="map-cell" :class="getCellClasses(x, y)"
-            @click="handleCellClick(x, y)" @mouseover="handleCellHover(x, y)" @mousedown="isDrawing = true"
-            @mouseup="isDrawing = false">
+            @click="handleCellClick(x, y)" @mouseover="handleCellHover(x, y)" @mousedown="handleCellDown(x, y)"
+            @mouseup="handleCellUp(x, y)">
           </div>
         </div>
       </div>
@@ -235,7 +250,13 @@ const getCellClasses = (x, y) => {
 const handleCellClick = (x, y) => {
   handleCellModification(x, y)
 }
-
+const handleCellDown = (x, y) => {
+  isDrawing.value = true
+  handleCellModification(x, y)
+}
+const handleCellUp = (x, y) => {
+  isDrawing.value = false
+}
 // 处理单元格悬停
 const handleCellHover = (x, y) => {
   if (isDrawing.value) {

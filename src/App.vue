@@ -1,7 +1,7 @@
 <template>
   <el-container class="app-container">
     <el-header>
-      <el-menu mode="horizontal" :ellipsis="false" class="nav-menu">
+      <el-menu mode="horizontal" :ellipsis="false" class="nav-menu" :default-active="currentView">
         <el-menu-item index="game" @click="currentView = 'game'">
           <el-icon><Orange /></el-icon>
           <span>游戏</span>
@@ -13,8 +13,8 @@
       </el-menu>
     </el-header>
     <el-main>
-      <MazeGame v-if="currentView === 'game'" />
-      <MapEditor v-if="currentView === 'editor'" />
+      <MazeGame v-show="currentView === 'game'" />
+      <MapEditor v-show="currentView === 'editor'" />
     </el-main>
   </el-container>
 </template>
