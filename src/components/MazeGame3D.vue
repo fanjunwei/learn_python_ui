@@ -15,7 +15,7 @@
         出口状态: <span>{{ gameState.exitOpen ? '开启' : '关闭' }}</span>
       </div>
     </div>
-    
+
     <div ref="container" class="game-view">
       加载中...
     </div>
@@ -86,8 +86,9 @@ const gameState = ref({
 // Three.js 相关变量
 const container = ref(null)
 let scene, camera, renderer, controls
-let player, playerModel, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
+let playerModel, monsterModel, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
 let init = false
+let playerModelAdded = false
 
 // 加载GLB模型
 const loadPlayerModel = async () => {
@@ -98,10 +99,24 @@ const loadPlayerModel = async () => {
     // 调整模型大小和位置
     playerModel.scale.set(0.5, 0.5, 0.5)
     playerModel.position.y = 0
-    scene.add(playerModel)
     return playerModel
   } catch (error) {
     console.error('加载模型失败:', error)
+    return null
+  }
+}
+
+// 加载怪物模型
+const loadMonsterModel = async () => {
+  const loader = new GLTFLoader()
+  try {
+    const gltf = await loader.loadAsync(new URL('@/assets/3d_model/怪物.glb', import.meta.url).href)
+    monsterModel = gltf.scene
+    // 调整模型大小和位置
+    monsterModel.scale.set(0.4, 0.4, 0.4)
+    return monsterModel
+  } catch (error) {
+    console.error('加载怪物模型失败:', error)
     return null
   }
 }
@@ -152,6 +167,8 @@ const initThreeJS = async () => {
 
   // 加载玩家模型
   await loadPlayerModel()
+  // 加载怪物模型
+  await loadMonsterModel()
 
   // 动画循环
   const animate = () => {
@@ -166,7 +183,14 @@ const initThreeJS = async () => {
 // 更新场景
 const updateScene = () => {
   if (!init || !playerModel) return
-
+  if (!playerModelAdded && !gameState.value.gameOver) {
+    scene.add(playerModel)
+    playerModelAdded = true
+  }
+  if (gameState.value.gameOver && playerModelAdded) {
+    scene.remove(playerModel)
+    playerModelAdded = false
+  }
   // 更新玩家位置和旋转
   playerModel.position.x = gameState.value.playerPosition.x - gameState.value.maze[0].length / 2
   playerModel.position.z = gameState.value.playerPosition.y - gameState.value.maze.length / 2
@@ -185,8 +209,8 @@ const updateScene = () => {
   monsterMeshes = []
 
   // 创建墙壁
-  const wallGeometry = new THREE.BoxGeometry(1, 1, 1)
-  const wallMaterial = new THREE.MeshStandardMaterial({ 
+  const wallGeometry = new THREE.BoxGeometry(0.99, 0.99, 0.99)
+  const wallMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffb5,
     metalness: 0.6,
     roughness: 0.2
@@ -205,13 +229,13 @@ const updateScene = () => {
 
   // 创建宝石
   const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
-  const blueGemMaterial = new THREE.MeshStandardMaterial({ 
+  const blueGemMaterial = new THREE.MeshStandardMaterial({
     color: 0x0000ff,
     metalness: 0.9,
     roughness: 0.1,
     envMapIntensity: 1.5
   })
-  const redGemMaterial = new THREE.MeshStandardMaterial({ 
+  const redGemMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000,
     metalness: 0.9,
     roughness: 0.1,
@@ -249,23 +273,17 @@ const updateScene = () => {
   })
 
   // 创建怪物
-  const monsterGeometry = new THREE.ConeGeometry(0.3, 0.8, 32)
-  const monsterMaterial = new THREE.MeshStandardMaterial({ 
-    color: 0xff6600,
-    metalness: 0.5,
-    roughness: 0.5,
-    envMapIntensity: 1
-  })
-
   gameState.value.monsters.forEach(monster => {
-    const monsterMesh = new THREE.Mesh(monsterGeometry, monsterMaterial)
-    monsterMesh.position.set(
-      monster.x - gameState.value.maze[0].length / 2,
-      0.4,
-      monster.y - gameState.value.maze.length / 2
-    )
-    scene.add(monsterMesh)
-    monsterMeshes.push(monsterMesh)
+    if (monsterModel) {
+      const newMonsterModel = monsterModel.clone()
+      newMonsterModel.position.set(
+        monster.x - gameState.value.maze[0].length / 2,
+        0,
+        monster.y - gameState.value.maze.length / 2
+      )
+      scene.add(newMonsterModel)
+      monsterMeshes.push(newMonsterModel)
+    }
   })
 
   // 创建出口
@@ -409,7 +427,7 @@ onMounted(async () => {
 onUnmounted(() => {
   ipcRenderer.removeListener('renderGameState', handleRenderGameState)
   window.removeEventListener('resize', handleResize)
-  
+
   // 清理Three.js资源
   if (renderer) {
     renderer.dispose()
@@ -483,4 +501,4 @@ onUnmounted(() => {
 .gem-icon.blue {
   background-position: -24px 0;
 }
-</style> 
+</style>
