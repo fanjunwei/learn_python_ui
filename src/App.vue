@@ -8,6 +8,12 @@
           </el-icon>
           <span>游戏</span>
         </el-menu-item>
+        <el-menu-item index="game3d" @click="currentView = 'game3d'">
+          <el-icon>
+            <GameController />
+          </el-icon>
+          <span>3D游戏</span>
+        </el-menu-item>
         <el-menu-item index="editor" @click="currentView = 'editor'">
           <el-icon>
             <Edit />
@@ -18,6 +24,7 @@
     </el-header>
     <el-main>
       <MazeGame v-show="currentView === 'game'" />
+      <MazeGame3D v-show="currentView === 'game3d'" />
       <MapEditor v-show="currentView === 'editor'" />
     </el-main>
   </el-container>
@@ -26,6 +33,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import MazeGame from './components/MazeGame.vue'
+import MazeGame3D from './components/MazeGame3D.vue'
 import MapEditor from './components/MapEditor.vue'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
