@@ -77,7 +77,7 @@
       <div class="map-grid" :style="gridStyle">
         <div v-for="(row, y) in mapData" :key="y" class="map-row">
           <div v-for="(cell, x) in row" :key="x" class="map-cell" :class="getCellClasses(x, y)"
-            @click="handleCellClick(x, y)" @mouseover="handleCellHover(x, y)" @mousedown="handleCellDown(x, y)"
+            @mouseover="handleCellHover(x, y)" @mousedown="handleCellDown(x, y)"
             @mouseup="handleCellUp(x, y)">
           </div>
         </div>
@@ -246,10 +246,6 @@ const getCellClasses = (x, y) => {
   return classes
 }
 
-// 处理单元格点击
-const handleCellClick = (x, y) => {
-  handleCellModification(x, y)
-}
 const handleCellDown = (x, y) => {
   isDrawing.value = true
   handleCellModification(x, y)

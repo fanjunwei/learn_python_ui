@@ -34,32 +34,6 @@ body {
     margin: 20px 0;
 }
 
-.cell {
-    width: 40px;
-    height: 40px;
-    background-color: white;
-    position: relative;
-}
-
-.cell.wall {
-    background-color: #333;
-}
-
-.exit {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 30px;
-    height: 30px;
-    background-color: #666;
-    border-radius: 5px;
-}
-
-.exit.open {
-    background-color: #00cc00;
-}
-
 .toast {
     position: fixed;
     top: 20px;

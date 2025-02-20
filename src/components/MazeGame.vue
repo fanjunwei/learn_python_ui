@@ -7,7 +7,7 @@
           <span>{{ gameState.collectedBlueGems }}/{{ gameState.requiredBlueGems }}</span>
         </div>
         <div v-if="gameState.requiredRedGems > 0" class="gem-count">
-          <div  class="gem-icon red"></div>
+          <div class="gem-icon red"></div>
           <span>{{ gameState.collectedRedGems }}/{{ gameState.requiredRedGems }}</span>
         </div>
       </div>
@@ -38,26 +38,32 @@
     </div>
     <div class="controls">
       <el-button @click="turn('left')" type="primary" plain>
-        <el-icon><ArrowLeft /></el-icon>
+        <el-icon>
+          <ArrowLeft />
+        </el-icon>
         左转
       </el-button>
       <el-button @click="move" type="primary">
         前进
       </el-button>
       <el-button @click="turn('right')" type="primary" plain>
-        <el-icon><ArrowRight /></el-icon>
+        <el-icon>
+          <ArrowRight />
+        </el-icon>
         右转
       </el-button>
       <el-button v-if="!gameState.autoCollect" @click="collectBlueGem" type="success">
-        <div  class="gem-icon blue"></div>
+        <div class="gem-icon blue"></div>
         收集蓝宝石
       </el-button>
       <el-button v-if="!gameState.autoCollect" @click="collectRedGem" type="success">
-        <div  class="gem-icon red"></div>
+        <div class="gem-icon red"></div>
         收集红宝石
       </el-button>
       <el-button @click="resetGame" type="danger">
-        <el-icon><RefreshRight /></el-icon>
+        <el-icon>
+          <RefreshRight />
+        </el-icon>
         重置游戏
       </el-button>
     </div>
@@ -507,5 +513,16 @@ onUnmounted(() => {
   background: var(--el-bg-color);
   border-radius: var(--el-border-radius-base);
   box-shadow: var(--el-box-shadow-light);
+}
+
+.cell {
+  width: 40px;
+  height: 40px;
+  background-color: white;
+  position: relative;
+}
+
+.cell.wall {
+  background-color: #333;
 }
 </style>
