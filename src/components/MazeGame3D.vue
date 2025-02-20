@@ -220,9 +220,13 @@ const updateScene = () => {
 
   gameState.value.blueGems.forEach(gem => {
     const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
+    let y = 0.5;
+    if (gem.x === gameState.value.playerPosition.x && gem.y === gameState.value.playerPosition.y) {
+      y = 1.5;
+    }
     blueMesh.position.set(
       gem.x - gameState.value.maze[0].length / 2,
-      0.5,
+      y,
       gem.y - gameState.value.maze.length / 2
     )
     scene.add(blueMesh)
@@ -231,9 +235,13 @@ const updateScene = () => {
 
   gameState.value.redGems.forEach(gem => {
     const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
+    let y = 0.5;
+    if (gem.x === gameState.value.playerPosition.x && gem.y === gameState.value.playerPosition.y) {
+      y = 1.5;
+    }
     redMesh.position.set(
       gem.x - gameState.value.maze[0].length / 2,
-      0.5,
+      y,
       gem.y - gameState.value.maze.length / 2
     )
     scene.add(redMesh)
