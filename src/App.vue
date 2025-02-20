@@ -24,7 +24,7 @@
     </el-header>
     <el-main>
       <MazeGame v-show="currentView === 'game'" />
-      <MazeGame3D v-show="currentView === 'game3d'" />
+      <MazeGame3D v-if="currentView === 'game3d'" />
       <MapEditor v-show="currentView === 'editor'" />
     </el-main>
   </el-container>
@@ -38,7 +38,7 @@ import MapEditor from './components/MapEditor.vue'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
-const currentView = ref('game')
+const currentView = ref('game3d')
 // 背景音乐
 const bgm = ref(new Audio(new URL('@/assets/audio/bgm.mp3', import.meta.url).href))
 bgm.value.loop = true

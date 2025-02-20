@@ -22,27 +22,32 @@
 
     <div class="controls">
       <el-button @click="turn('left')" type="primary" plain>
-        <el-icon><ArrowLeft /></el-icon>
+        <el-icon>
+          <ArrowLeft />
+        </el-icon>
         左转
       </el-button>
       <el-button @click="move" type="primary">
-        <el-icon><ArrowUp /></el-icon>
         前进
       </el-button>
       <el-button @click="turn('right')" type="primary" plain>
-        <el-icon><ArrowRight /></el-icon>
+        <el-icon>
+          <ArrowRight />
+        </el-icon>
         右转
       </el-button>
-      <el-button v-if="!gameState.autoCollect" @click="collectBlueGem" type="info">
-        <el-icon><Collection /></el-icon>
+      <el-button v-if="!gameState.autoCollect" @click="collectBlueGem" type="success">
+        <div class="gem-icon blue"></div>
         收集蓝宝石
       </el-button>
-      <el-button v-if="!gameState.autoCollect" @click="collectRedGem" type="danger">
-        <el-icon><Collection /></el-icon>
+      <el-button v-if="!gameState.autoCollect" @click="collectRedGem" type="success">
+        <div class="gem-icon red"></div>
         收集红宝石
       </el-button>
-      <el-button @click="resetGame" type="warning">
-        <el-icon><RefreshRight /></el-icon>
+      <el-button @click="resetGame" type="danger">
+        <el-icon>
+          <RefreshRight />
+        </el-icon>
         重置游戏
       </el-button>
     </div>
@@ -54,6 +59,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -80,8 +86,26 @@ const gameState = ref({
 // Three.js 相关变量
 const container = ref(null)
 let scene, camera, renderer, controls
-let player, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
+let player, playerModel, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
 let init = false
+
+// 加载GLB模型
+const loadPlayerModel = async () => {
+  const loader = new GLTFLoader()
+  try {
+    const gltf = await loader.loadAsync(new URL('@/assets/3d_model/主角.glb', import.meta.url).href)
+    playerModel = gltf.scene
+    // 调整模型大小和位置
+    playerModel.scale.set(0.5, 0.5, 0.5)
+    playerModel.position.y = 0
+    scene.add(playerModel)
+    return playerModel
+  } catch (error) {
+    console.error('加载模型失败:', error)
+    return null
+  }
+}
+
 // 初始化Three.js场景
 const initThreeJS = async () => {
   console.log('初始化Three.js')
@@ -102,7 +126,7 @@ const initThreeJS = async () => {
   if (container.value.firstChild) {
     container.value.removeChild(container.value.firstChild)
   }
-  container.value.innerHTML = '';
+  container.value.innerHTML = ''
   container.value.appendChild(renderer.domElement)
 
   // 添加轨道控制器
@@ -126,16 +150,8 @@ const initThreeJS = async () => {
   directionalLight.position.set(5, 10, 5)
   scene.add(directionalLight)
 
-  // 创建玩家
-  const playerGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8)
-  const playerMaterial = new THREE.MeshStandardMaterial({ 
-    color: 0x00ff00,
-    metalness: 0.7,
-    roughness: 0.3
-  })
-  player = new THREE.Mesh(playerGeometry, playerMaterial)
-  player.position.y = 1.5
-  scene.add(player)
+  // 加载玩家模型
+  await loadPlayerModel()
 
   // 动画循环
   const animate = () => {
@@ -149,7 +165,12 @@ const initThreeJS = async () => {
 
 // 更新场景
 const updateScene = () => {
-  if (!init) return
+  if (!init || !playerModel) return
+
+  // 更新玩家位置和旋转
+  playerModel.position.x = gameState.value.playerPosition.x - gameState.value.maze[0].length / 2
+  playerModel.position.z = gameState.value.playerPosition.y - gameState.value.maze.length / 2
+  playerModel.rotation.y = -gameState.value.playerDirection * Math.PI / 2 + Math.PI
 
   // 清除旧的物体
   walls.forEach(wall => scene.remove(wall))
@@ -173,9 +194,9 @@ const updateScene = () => {
 
   gameState.value.maze.forEach((row, y) => {
     row.forEach((cell, x) => {
-      if (!cell.walkable) {
+      if (cell.walkable) {
         const wall = new THREE.Mesh(wallGeometry, wallMaterial)
-        wall.position.set(x - gameState.value.maze[0].length / 2, 0.5, y - gameState.value.maze.length / 2)
+        wall.position.set(x - gameState.value.maze[0].length / 2, -0.5, y - gameState.value.maze.length / 2)
         scene.add(wall)
         walls.push(wall)
       }
@@ -240,7 +261,7 @@ const updateScene = () => {
   })
 
   // 创建出口
-  const exitGeometry = new THREE.BoxGeometry(1, 1, 0.1)
+  const exitGeometry = new THREE.BoxGeometry(1, 0.05, 1)
   const exitMaterial = new THREE.MeshStandardMaterial({
     color: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
     metalness: 0.7,
@@ -252,15 +273,10 @@ const updateScene = () => {
   exitMesh = new THREE.Mesh(exitGeometry, exitMaterial)
   exitMesh.position.set(
     gameState.value.exit.x - gameState.value.maze[0].length / 2,
-    0.5,
+    0.05,
     gameState.value.exit.y - gameState.value.maze.length / 2
   )
   scene.add(exitMesh)
-
-  // 更新玩家位置和旋转
-  player.position.x = gameState.value.playerPosition.x - gameState.value.maze[0].length / 2
-  player.position.z = gameState.value.playerPosition.y - gameState.value.maze.length / 2
-  player.rotation.y = -gameState.value.playerDirection * Math.PI / 2
 }
 
 // 监听窗口大小变化
