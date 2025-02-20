@@ -69,3 +69,12 @@ body {
         transform: translate(-50%, -20px);
     }
 }
+
+ .el-radio-button span.el-radio-button__inner {
+    display: flex;
+    gap: 2px;
+}
+
+.el-button>span {
+    gap: 2px;
+}
