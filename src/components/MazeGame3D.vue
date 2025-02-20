@@ -16,7 +16,9 @@
       </div>
     </div>
     
-    <div ref="container" class="game-view"></div>
+    <div ref="container" class="game-view">
+      加载中...
+    </div>
 
     <div class="controls">
       <el-button @click="turn('left')" type="primary" plain>
@@ -79,9 +81,10 @@ const gameState = ref({
 const container = ref(null)
 let scene, camera, renderer, controls
 let player, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
-
+let init = false
 // 初始化Three.js场景
 const initThreeJS = async () => {
+  console.log('初始化Three.js')
   // 创建场景
   scene = new THREE.Scene()
 
@@ -96,6 +99,10 @@ const initThreeJS = async () => {
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1
   renderer.outputEncoding = THREE.sRGBEncoding
+  if (container.value.firstChild) {
+    container.value.removeChild(container.value.firstChild)
+  }
+  container.value.innerHTML = '';
   container.value.appendChild(renderer.domElement)
 
   // 添加轨道控制器
@@ -106,7 +113,7 @@ const initThreeJS = async () => {
   // 加载EXR环境贴图
   const exrLoader = new EXRLoader()
   exrLoader.setDataType(THREE.FloatType)
-  const envMap = await exrLoader.loadAsync(new URL('@/assets/textures/autumn_field_puresky_4k.exr', import.meta.url).href)
+  const envMap = await exrLoader.loadAsync(new URL('@/assets/textures/autumn_field_puresky_1k.exr', import.meta.url).href)
   envMap.mapping = THREE.EquirectangularReflectionMapping
   scene.environment = envMap
   scene.background = envMap
@@ -137,11 +144,12 @@ const initThreeJS = async () => {
     renderer.render(scene, camera)
   }
   animate()
+  init = true
 }
 
 // 更新场景
 const updateScene = () => {
-  if (!scene) return
+  if (!init) return
 
   // 清除旧的物体
   walls.forEach(wall => scene.remove(wall))
@@ -334,7 +342,7 @@ const initGame = async () => {
 
 // 事件处理函数
 const handleRenderGameState = (event, state) => {
-  console.log('收到游戏状态更新:', state)
+  console.log('3D收到游戏状态更新:', state)
   if (state && state.maze) {
     console.log('迷宫数据:', state.maze)
     gameState.value = state
