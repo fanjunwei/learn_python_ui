@@ -96,53 +96,6 @@ const gameState = ref({
   autoCollect: false,
 })
 
-// 背景音乐
-const bgm = ref(new Audio(new URL('@/assets/audio/bgm.mp3', import.meta.url).href))
-bgm.value.loop = true
-const getGemAudio = ref(new Audio(new URL('@/assets/audio/get_gem.mp3', import.meta.url).href))
-const getMonsterAudio = ref(new Audio(new URL('@/assets/audio/get_monster.mp3', import.meta.url).href))
-const completeAudio = ref(new Audio(new URL('@/assets/audio/complete.mp3', import.meta.url).href))
-const errorAudio = ref(new Audio(new URL('@/assets/audio/error.mp3', import.meta.url).href))
-// 淡出背景音乐
-const fadeOutBgm = () => {
-  const fadeOutInterval = 50 // 每50毫秒调整一次音量
-  const fadeOutStep = 0.05 // 每次减小0.05
-  const fadeOutDuration = 1000 // 总共1秒完成淡出
-
-  let currentVolume = bgm.value.volume
-  const steps = fadeOutDuration / fadeOutInterval
-
-  const interval = setInterval(() => {
-    currentVolume = Math.max(0, currentVolume - fadeOutStep)
-    bgm.value.volume = currentVolume
-
-    if (currentVolume <= 0) {
-      clearInterval(interval)
-      bgm.value.pause()
-      bgm.value.currentTime = 0
-      bgm.value.volume = 1 // 重置音量为默认值
-    }
-  }, fadeOutInterval)
-}
-
-// 监听游戏状态变化
-watch(() => gameState.value.gameOver, (newValue) => {
-  console.log('游戏状态变化:', newValue)
-  if (newValue) {
-    if (!bgm.value.paused) {
-      fadeOutBgm()
-    }
-  } else {
-    if (bgm.value.paused) {
-      bgm.value.volume = 1
-      bgm.value.currentTime = 0
-      bgm.value.play().catch(error => {
-        console.warn('背景音乐播放失败:', error)
-      })
-    }
-  }
-})
-
 // Toast消息
 const toast = ref('')
 
@@ -276,35 +229,11 @@ const handleShowToast = (event, message) => {
   showToast(message)
 }
 
-const handlePlayAudio = (event, audioType) => {
-  if (audioType === 'gem') {
-    if (getGemAudio.value.played) {
-      getGemAudio.value.pause()
-    }
-    getGemAudio.value.play()
-  } else if (audioType === 'monster') {
-    if (getMonsterAudio.value.played) {
-      getMonsterAudio.value.pause()
-    }
-    getMonsterAudio.value.play()
-  } else if (audioType === 'complete') {
-    if (completeAudio.value.played) {
-      completeAudio.value.pause()
-    }
-    completeAudio.value.play()
-  } else if (audioType === 'error') {
-    if (errorAudio.value.played) {
-      errorAudio.value.pause()
-    }
-    errorAudio.value.play()
-  }
-}
 // 监听服务器消息
 onMounted(async () => {
   console.log('组件已挂载')
   ipcRenderer.on('renderGameState', handleRenderGameState)
   ipcRenderer.on('showToast', handleShowToast)
-  ipcRenderer.on('playAudio', handlePlayAudio)
 
   // 初始化游戏
   await initGame()

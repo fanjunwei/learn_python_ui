@@ -82,6 +82,7 @@ app.post('/resetGame', (req, res) => {
   if (mainWindow) {
     console.log('发送游戏状态到主窗口')
     mainWindow.webContents.send('renderGameState', renderState)
+    mainWindow.webContents.send('playAudio', 'play_bgm')
   } else {
     console.warn('主窗口未初始化')
   }
@@ -145,9 +146,11 @@ app.post('/move', async (req, res) => {
     mainWindow.webContents.send('playAudio', 'gem');
   } else if (result.monsterHit) {
     result.message = '你被怪物抓住了！游戏结束！';
+    mainWindow.webContents.send('playAudio', 'stop_bgm')
     mainWindow.webContents.send('playAudio', 'monster');
   } else if (result.reachedExit) {
     result.message = '恭喜你完成迷宫！';
+    mainWindow.webContents.send('playAudio', 'stop_bgm')
     mainWindow.webContents.send('playAudio', 'complete');
   }
   if (action === 'collect_blue') {
