@@ -51,6 +51,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -80,25 +81,35 @@ let scene, camera, renderer, controls
 let player, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
 
 // 初始化Three.js场景
-const initThreeJS = () => {
+const initThreeJS = async () => {
   // 创建场景
   scene = new THREE.Scene()
-  scene.background = new THREE.Color(0xf0f0f0)
 
   // 创建相机
   camera = new THREE.PerspectiveCamera(75, container.value.clientWidth / container.value.clientHeight, 0.1, 1000)
-  camera.position.set(5, 10, 5)
+  camera.position.set(5, 5, 10)
   camera.lookAt(0, 0, 0)
 
   // 创建渲染器
   renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setSize(container.value.clientWidth, container.value.clientHeight)
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
+  renderer.toneMappingExposure = 1
+  renderer.outputEncoding = THREE.sRGBEncoding
   container.value.appendChild(renderer.domElement)
 
   // 添加轨道控制器
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
   controls.dampingFactor = 0.05
+
+  // 加载EXR环境贴图
+  const exrLoader = new EXRLoader()
+  exrLoader.setDataType(THREE.FloatType)
+  const envMap = await exrLoader.loadAsync(new URL('@/assets/textures/autumn_field_puresky_4k.exr', import.meta.url).href)
+  envMap.mapping = THREE.EquirectangularReflectionMapping
+  scene.environment = envMap
+  scene.background = envMap
 
   // 添加光源
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
@@ -108,18 +119,15 @@ const initThreeJS = () => {
   directionalLight.position.set(5, 10, 5)
   scene.add(directionalLight)
 
-  // // 添加地板
-  // const floorGeometry = new THREE.PlaneGeometry(20, 20)
-  // const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc })
-  // const floor = new THREE.Mesh(floorGeometry, floorMaterial)
-  // floor.rotation.x = -Math.PI / 2
-  // scene.add(floor)
-
   // 创建玩家
   const playerGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8)
-  const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+  const playerMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0x00ff00,
+    metalness: 0.7,
+    roughness: 0.3
+  })
   player = new THREE.Mesh(playerGeometry, playerMaterial)
-  player.position.y = 0.4
+  player.position.y = 1.5
   scene.add(player)
 
   // 动画循环
@@ -149,11 +157,15 @@ const updateScene = () => {
 
   // 创建墙壁
   const wallGeometry = new THREE.BoxGeometry(1, 1, 1)
-  const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xffffb5, metalness: 0.6, roughness: 0.2 })
+  const wallMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0xffffb5,
+    metalness: 0.6,
+    roughness: 0.2
+  })
 
   gameState.value.maze.forEach((row, y) => {
     row.forEach((cell, x) => {
-      if (cell.walkable) {
+      if (!cell.walkable) {
         const wall = new THREE.Mesh(wallGeometry, wallMaterial)
         wall.position.set(x - gameState.value.maze[0].length / 2, 0.5, y - gameState.value.maze.length / 2)
         scene.add(wall)
@@ -163,9 +175,19 @@ const updateScene = () => {
   })
 
   // 创建宝石
-  const gemGeometry = new THREE.SphereGeometry(0.2, 16, 16)
-  const blueGemMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff, metalness: 0.8, roughness: 0.2 })
-  const redGemMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 0.8, roughness: 0.2 })
+  const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
+  const blueGemMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0x0000ff,
+    metalness: 0.9,
+    roughness: 0.1,
+    envMapIntensity: 1.5
+  })
+  const redGemMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0xff0000,
+    metalness: 0.9,
+    roughness: 0.1,
+    envMapIntensity: 1.5
+  })
 
   gameState.value.blueGems.forEach(gem => {
     const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
@@ -190,8 +212,13 @@ const updateScene = () => {
   })
 
   // 创建怪物
-  const monsterGeometry = new THREE.ConeGeometry(0.3, 0.8, 4)
-  const monsterMaterial = new THREE.MeshStandardMaterial({ color: 0xff6600 })
+  const monsterGeometry = new THREE.ConeGeometry(0.3, 0.8, 32)
+  const monsterMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0xff6600,
+    metalness: 0.5,
+    roughness: 0.5,
+    envMapIntensity: 1
+  })
 
   gameState.value.monsters.forEach(monster => {
     const monsterMesh = new THREE.Mesh(monsterGeometry, monsterMaterial)
@@ -208,8 +235,11 @@ const updateScene = () => {
   const exitGeometry = new THREE.BoxGeometry(1, 1, 0.1)
   const exitMaterial = new THREE.MeshStandardMaterial({
     color: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
+    metalness: 0.7,
+    roughness: 0.3,
     transparent: true,
-    opacity: 0.7
+    opacity: 0.7,
+    envMapIntensity: 1.2
   })
   exitMesh = new THREE.Mesh(exitGeometry, exitMaterial)
   exitMesh.position.set(
