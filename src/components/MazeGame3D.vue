@@ -81,6 +81,7 @@ const gameState = ref({
   success: false,
   onGemType: 'none',
   autoCollect: false,
+  action: null
 })
 
 // Three.js 相关变量
@@ -94,9 +95,9 @@ let targetPlayerPosition = new THREE.Vector3()
 let targetPlayerRotation = 0
 let currentPlayerPosition = new THREE.Vector3()
 let currentPlayerRotation = 0
-const ANIMATION_DURATION = 2 // 动画持续时间（秒）
 let animationProgress = 0
 let currentAnimation = null
+let currentAction = null
 
 // 加载GLB模型
 const loadPlayerModel = async () => {
@@ -110,7 +111,7 @@ const loadPlayerModel = async () => {
 
     // 设置动画混合器
     playerMixer = new THREE.AnimationMixer(playerModel)
-    
+
     // 加载所有动画
     gltf.animations.forEach(clip => {
       const action = playerMixer.clipAction(clip)
@@ -160,7 +161,7 @@ const switchAnimation = (newAnimation) => {
   if (currentAnimation && playerAnimations[currentAnimation]) {
     playerAnimations[currentAnimation].fadeOut(fadeTime)
   }
-  
+
   playerAnimations[newAnimation].reset().fadeIn(fadeTime).play()
   currentAnimation = newAnimation
 }
@@ -219,7 +220,7 @@ const initThreeJS = async () => {
   const animate = () => {
     requestAnimationFrame(animate)
     const delta = clock.getDelta()
-    
+
     // 更新控制器
     controls.update()
 
@@ -229,9 +230,18 @@ const initThreeJS = async () => {
     }
 
     // 更新玩家动画
-    let duration = ANIMATION_DURATION
-    let distance = currentPlayerPosition.distanceTo(targetPlayerPosition)
-    if (distance < 0.01) {
+    let duration
+    if (gameState.value.action === 'forward') {
+      duration = 2
+    } else if (gameState.value.action === 'turnLeft') {
+      duration = 0.5
+    } else if (gameState.value.action === 'turnRight') {
+      duration = 0.5
+    } else if (gameState.value.action === 'collect_blue') {
+      duration = 2
+    } else if (gameState.value.action === 'collect_red') {
+      duration = 2
+    } else {
       duration = 0.5
     }
     if (animationProgress < duration) {
@@ -239,7 +249,7 @@ const initThreeJS = async () => {
       const t = Math.min(animationProgress / duration, 1)
       // const easeT = t * (2 - t) // 缓动函数
       const easeT = t
-      
+
       if (playerModel) {
         // 位置插值
         playerModel.position.lerpVectors(currentPlayerPosition, targetPlayerPosition, easeT)
@@ -251,7 +261,19 @@ const initThreeJS = async () => {
 
         // 根据动画进度切换动画状态
         if (t < 1) {
-          switchAnimation('Walk')
+          if (gameState.value.action === 'forward') {
+            switchAnimation('Walk')
+          } else if (gameState.value.action === 'turnLeft') {
+            switchAnimation('Walk')
+          } else if (gameState.value.action === 'turnRight') {
+            switchAnimation('Walk')
+          } else if (gameState.value.action === 'collect_blue') {
+            switchAnimation('Jump')
+          } else if (gameState.value.action === 'collect_red') {
+            switchAnimation('Jump')
+          } else {
+            switchAnimation('Idle')
+          }
         } else {
           switchAnimation('Idle')
         }
@@ -500,16 +522,10 @@ const resetGame = async () => {
 const initGame = async () => {
   try {
     console.log('开始初始化游戏...')
-    const response = await fetch('http://localhost:3000/resetGame', {
+    await fetch('http://localhost:3000/resetGame', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     })
-    const data = await response.json()
-    console.log('初始化游戏响应:', data)
-    if (data.success) {
-      console.log('更新游戏状态:', data.gameState)
-      gameState.value = data.gameState
-    }
   } catch (error) {
     console.error('初始化游戏失败:', error)
   }

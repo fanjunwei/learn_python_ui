@@ -81,6 +81,7 @@ app.post('/resetGame', (req, res) => {
 
   if (mainWindow) {
     console.log('发送游戏状态到主窗口')
+    renderState.action = 'reset'
     mainWindow.webContents.send('renderGameState', renderState)
     mainWindow.webContents.send('playAudio', 'play_bgm')
   } else {
@@ -166,10 +167,15 @@ app.post('/move', async (req, res) => {
     }
   }
   if (result.success) {
+    renderState.action = action
     mainWindow.webContents.send('renderGameState', renderState);
   }
   if (result.message) {
     mainWindow.webContents.send('showToast', result.message);
+  }
+  let waitTime = 1000;
+  if (action === 'forward') {
+    waitTime = 2000;
   }
 
   await new Promise(resolve => {
@@ -179,7 +185,7 @@ app.post('/move', async (req, res) => {
         gameState: renderState
       });
       resolve();
-    }, 1000);
+    }, waitTime);
   });
 });
 
