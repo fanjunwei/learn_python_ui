@@ -86,7 +86,7 @@ const gameState = ref({
 // Three.js 相关变量
 const container = ref(null)
 let scene, camera, renderer, controls
-let playerModel, monsterModel, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
+let playerModel, playerMixer, playerAnimations = {}, monsterModel, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
 let init = false
 let playerModelAdded = false
 let clock = null
@@ -94,18 +94,40 @@ let targetPlayerPosition = new THREE.Vector3()
 let targetPlayerRotation = 0
 let currentPlayerPosition = new THREE.Vector3()
 let currentPlayerRotation = 0
-const ANIMATION_DURATION = 0.5 // 动画持续时间（秒）
+const ANIMATION_DURATION = 2 // 动画持续时间（秒）
 let animationProgress = 0
+let currentAnimation = null
 
 // 加载GLB模型
 const loadPlayerModel = async () => {
   const loader = new GLTFLoader()
   try {
-    const gltf = await loader.loadAsync(new URL('@/assets/3d_model/主角.glb', import.meta.url).href)
+    const gltf = await loader.loadAsync(new URL('@/assets/3d_model/player.glb', import.meta.url).href)
     playerModel = gltf.scene
     // 调整模型大小和位置
     playerModel.scale.set(0.5, 0.5, 0.5)
     playerModel.position.y = 0
+
+    // 设置动画混合器
+    playerMixer = new THREE.AnimationMixer(playerModel)
+    
+    // 加载所有动画
+    gltf.animations.forEach(clip => {
+      const action = playerMixer.clipAction(clip)
+      let name = clip.name
+      if (clip.name === '[动作存放]') {
+        name = 'Idle'
+      }
+      playerAnimations[name] = action
+      console.log('加载动画:', name)
+    })
+
+    // 设置默认动画为待机
+    if (playerAnimations['Idle']) {
+      playerAnimations['Idle'].play()
+      currentAnimation = 'Idle'
+    }
+
     return playerModel
   } catch (error) {
     console.error('加载模型失败:', error)
@@ -126,6 +148,21 @@ const loadMonsterModel = async () => {
     console.error('加载怪物模型失败:', error)
     return null
   }
+}
+
+// 切换动画
+const switchAnimation = (newAnimation) => {
+  if (!playerMixer || !playerAnimations[newAnimation] || currentAnimation === newAnimation) return
+  if (currentAnimation === newAnimation) {
+    return
+  }
+  const fadeTime = 0.2
+  if (currentAnimation && playerAnimations[currentAnimation]) {
+    playerAnimations[currentAnimation].fadeOut(fadeTime)
+  }
+  
+  playerAnimations[newAnimation].reset().fadeIn(fadeTime).play()
+  currentAnimation = newAnimation
 }
 
 // 初始化Three.js场景
@@ -186,11 +223,22 @@ const initThreeJS = async () => {
     // 更新控制器
     controls.update()
 
+    // 更新动画混合器
+    if (playerMixer) {
+      playerMixer.update(delta)
+    }
+
     // 更新玩家动画
-    if (animationProgress < ANIMATION_DURATION) {
+    let duration = ANIMATION_DURATION
+    let distance = currentPlayerPosition.distanceTo(targetPlayerPosition)
+    if (distance < 0.01) {
+      duration = 0.5
+    }
+    if (animationProgress < duration) {
       animationProgress += delta
-      const t = Math.min(animationProgress / ANIMATION_DURATION, 1)
-      const easeT = t * (2 - t) // 缓动函数
+      const t = Math.min(animationProgress / duration, 1)
+      // const easeT = t * (2 - t) // 缓动函数
+      const easeT = t
       
       if (playerModel) {
         // 位置插值
@@ -200,6 +248,13 @@ const initThreeJS = async () => {
         const targetAngle = targetPlayerRotation
         const angleDiff = ((targetAngle - currentAngle + Math.PI) % (Math.PI * 2)) - Math.PI
         playerModel.rotation.y = currentAngle + angleDiff * easeT
+
+        // 根据动画进度切换动画状态
+        if (t < 1) {
+          switchAnimation('Walk')
+        } else {
+          switchAnimation('Idle')
+        }
       }
     }
 
