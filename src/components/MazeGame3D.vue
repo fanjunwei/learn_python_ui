@@ -90,15 +90,15 @@ const container = ref(null)
 let scene, camera, renderer, controls
 let playerModel, playerMixer, playerAnimations = {}, monsterModel, monsterMixer, monsterAnimations = {}, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
 let init = false
-let playerModelAdded = false
 let clock = null
 let targetPlayerPosition = new THREE.Vector3()
 let targetPlayerRotation = 0
 let currentPlayerPosition = new THREE.Vector3()
 let currentPlayerRotation = 0
 let animationProgress = 0
+const playerFadeOutDuration = 1.0
+let playerFadeOutProgress = playerFadeOutDuration
 let currentAnimation = null
-let currentAction = null
 
 // 加载GLB模型
 const loadPlayerModel = async () => {
@@ -125,6 +125,13 @@ const loadPlayerModel = async () => {
       playerAnimations['Idle'].play()
       currentAnimation = 'Idle'
     }
+
+    // 修改玩家模型和怪物模型，使其投射阴影
+    playerModel.traverse((node) => {
+      if (node.isMesh) {
+        node.castShadow = true
+      }
+    })
 
     return playerModel
   } catch (error) {
@@ -158,6 +165,13 @@ const loadMonsterModel = async () => {
     if (monsterAnimations['Idle']) {
       monsterAnimations['Idle'].play()
     }
+
+    // 修改玩家模型和怪物模型，使其投射阴影
+    monsterModel.traverse((node) => {
+      if (node.isMesh) {
+        node.castShadow = true
+      }
+    })
 
     return monsterModel
   } catch (error) {
@@ -199,6 +213,9 @@ const initThreeJS = async () => {
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1
   renderer.outputEncoding = THREE.sRGBEncoding
+  renderer.physicallyCorrectLights = true
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap
   if (container.value.firstChild) {
     container.value.removeChild(container.value.firstChild)
   }
@@ -224,12 +241,17 @@ const initThreeJS = async () => {
 
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
   directionalLight.position.set(5, 10, 5)
+  directionalLight.castShadow = true
+  directionalLight.shadow.mapSize.width = 1024
+  directionalLight.shadow.mapSize.height = 1024
   scene.add(directionalLight)
 
   // 加载玩家模型
   await loadPlayerModel()
   // 加载怪物模型
   await loadMonsterModel()
+
+  scene.add(playerModel)
 
   // 动画循环
   const animate = () => {
@@ -299,6 +321,15 @@ const initThreeJS = async () => {
         }
       }
     }
+    if (playerFadeOutProgress < playerFadeOutDuration) {
+      playerFadeOutProgress += delta
+      const opacity = 1 - (playerFadeOutProgress / playerFadeOutDuration)
+      playerModel.traverse((node) => {
+        if (node.isMesh) {
+          node.material.opacity = Math.max(0, opacity)
+        }
+      })
+    }
 
     // 更新宝石动画
     const time = clock.getElapsedTime()
@@ -328,13 +359,16 @@ const initThreeJS = async () => {
 // 更新场景
 const updateScene = () => {
   if (!init || !playerModel) return
-  if (!playerModelAdded && !gameState.value.gameOver) {
-    scene.add(playerModel)
-    playerModelAdded = true
-  }
-  if (gameState.value.gameOver && playerModelAdded) {
-    scene.remove(playerModel)
-    playerModelAdded = false
+  playerModel.traverse((node) => {
+    if (node.isMesh) {
+      node.material.transparent = true
+      node.material.opacity = 1
+    }
+  })
+
+  // 处理游戏结束时的渐隐效果
+  if (gameState.value.gameOver) {
+    playerFadeOutProgress = 0
   }
 
   // 设置目标位置和旋转
@@ -346,7 +380,7 @@ const updateScene = () => {
   targetPlayerRotation = -gameState.value.playerDirection * Math.PI / 2 + Math.PI
 
   // 如果是第一次设置位置，直接设置而不是动画
-  if (currentPlayerPosition.lengthSq() === 0) {
+  if (gameState.value.action === 'reset') {
     currentPlayerPosition.copy(targetPlayerPosition)
     playerModel.position.copy(targetPlayerPosition)
     currentPlayerRotation = targetPlayerRotation
@@ -366,10 +400,14 @@ const updateScene = () => {
 
   // 创建墙壁
   const wallGeometry = new THREE.BoxGeometry(0.99, 0.99, 0.99)
-  const wallMaterial = new THREE.MeshStandardMaterial({
+  const wallMaterial = new THREE.MeshPhysicalMaterial({
     color: 0xffffb5,
-    metalness: 0.6,
-    roughness: 0.2
+    metalness: 0.9,
+    roughness: 0.1,
+    envMapIntensity: 1.5,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.1,
+    reflectivity: 1.0
   })
 
   gameState.value.maze.forEach((row, y) => {
@@ -377,6 +415,7 @@ const updateScene = () => {
       if (cell.walkable) {
         const wall = new THREE.Mesh(wallGeometry, wallMaterial)
         wall.position.set(x - gameState.value.maze[0].length / 2, -0.5, y - gameState.value.maze.length / 2)
+        wall.receiveShadow = true
         scene.add(wall)
         walls.push(wall)
       }
@@ -389,13 +428,15 @@ const updateScene = () => {
       blueGemMeshes.forEach(gem => scene.remove(gem))
       blueGemMeshes = []
       const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
-      const blueGemMaterial = new THREE.MeshStandardMaterial({
+      const blueGemMaterial = new THREE.MeshPhysicalMaterial({
         color: 0x0000ff,
         metalness: 0.9,
         roughness: 0.1,
         envMapIntensity: 1.5,
         emissive: 0x0000ff,
-        emissiveIntensity: 0.2
+        emissiveIntensity: 0.2,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1
       })
       gameState.value.blueGems.forEach((gem, index) => {
         const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
@@ -421,13 +462,15 @@ const updateScene = () => {
       redGemMeshes.forEach(gem => scene.remove(gem))
       redGemMeshes = []
       const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
-      const redGemMaterial = new THREE.MeshStandardMaterial({
+      const redGemMaterial = new THREE.MeshPhysicalMaterial({
         color: 0xff0000,
         metalness: 0.9,
         roughness: 0.1,
         envMapIntensity: 1.5,
         emissive: 0xff0000,
-        emissiveIntensity: 0.2
+        emissiveIntensity: 0.2,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1
       })
       gameState.value.redGems.forEach((gem, index) => {
         const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
@@ -491,7 +534,7 @@ const updateScene = () => {
 
   // 创建出口
   const exitGeometry = new THREE.BoxGeometry(1, 0.05, 1)
-  const exitMaterial = new THREE.MeshStandardMaterial({
+  const exitMaterial = new THREE.MeshPhysicalMaterial({
     color: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
     metalness: 0.7,
     roughness: 0.3,
@@ -499,7 +542,9 @@ const updateScene = () => {
     opacity: 0.7,
     envMapIntensity: 1.2,
     emissive: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
-    emissiveIntensity: 0.5
+    emissiveIntensity: 0.5,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.1
   })
   exitMesh = new THREE.Mesh(exitGeometry, exitMaterial)
   exitMesh.position.set(
