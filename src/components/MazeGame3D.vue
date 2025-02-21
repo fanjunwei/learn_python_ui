@@ -60,6 +60,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -142,8 +143,11 @@ const loadMonsterModel = async () => {
   try {
     const gltf = await loader.loadAsync(new URL('@/assets/3d_model/怪物.glb', import.meta.url).href)
     monsterModel = gltf.scene
-    // 调整模型大小和位置
+    
+    // 设置原始模型的变换
     monsterModel.scale.set(0.4, 0.4, 0.4)
+    monsterModel.position.y = 0.5
+
     return monsterModel
   } catch (error) {
     console.error('加载怪物模型失败:', error)
@@ -293,11 +297,16 @@ const initThreeJS = async () => {
 
     // 更新怪物动画
     monsterMeshes.forEach((monster, index) => {
+      const time = clock.getElapsedTime()
+      const basePosition = monster.userData.basePosition
+      
+      // 应用浮动动画
+      monster.position.x = basePosition.x + Math.sin(time + index) * 0.2
+      monster.position.y = basePosition.y + Math.abs(Math.sin(time * 2)) * 0.2
+      monster.position.z = basePosition.z + Math.cos(time + index) * 0.2
+      
+      // 旋转模型
       monster.rotation.y = time + index
-      const offset = Math.sin(time * 2 + index) * 0.2
-      monster.position.y = Math.abs(Math.sin(time * 2)) * 0.2
-      monster.position.x = monster.userData.basePosition.x + Math.sin(time + index) * 0.2
-      monster.position.z = monster.userData.basePosition.z + Math.cos(time + index) * 0.2
     })
 
     renderer.render(scene, camera)
@@ -426,14 +435,24 @@ const updateScene = () => {
   // 创建怪物
   gameState.value.monsters.forEach((monster, index) => {
     if (monsterModel) {
-      const newMonsterModel = monsterModel.clone()
-      const basePosition = new THREE.Vector3(
+      // 使用SkeletonUtils克隆带骨骼的模型
+      const newMonsterModel = SkeletonUtils.clone(monsterModel)
+      
+      // 复制原始模型的变换
+      newMonsterModel.scale.copy(monsterModel.scale)
+      newMonsterModel.position.set(
         monster.x - gameState.value.maze[0].length / 2,
-        0,
+        monsterModel.position.y,
         monster.y - gameState.value.maze.length / 2
       )
-      newMonsterModel.position.copy(basePosition)
-      newMonsterModel.userData.basePosition = basePosition.clone()
+      
+      // 保存基础位置用于动画
+      newMonsterModel.userData.basePosition = new THREE.Vector3(
+        monster.x - gameState.value.maze[0].length / 2,
+        monsterModel.position.y,
+        monster.y - gameState.value.maze.length / 2
+      )
+
       scene.add(newMonsterModel)
       monsterMeshes.push(newMonsterModel)
     }
