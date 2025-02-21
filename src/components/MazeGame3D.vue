@@ -89,6 +89,13 @@ let scene, camera, renderer, controls
 let playerModel, monsterModel, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
 let init = false
 let playerModelAdded = false
+let clock = null
+let targetPlayerPosition = new THREE.Vector3()
+let targetPlayerRotation = 0
+let currentPlayerPosition = new THREE.Vector3()
+let currentPlayerRotation = 0
+const ANIMATION_DURATION = 0.5 // 动画持续时间（秒）
+let animationProgress = 0
 
 // 加载GLB模型
 const loadPlayerModel = async () => {
@@ -126,6 +133,7 @@ const initThreeJS = async () => {
   console.log('初始化Three.js')
   // 创建场景
   scene = new THREE.Scene()
+  clock = new THREE.Clock()
 
   // 创建相机
   camera = new THREE.PerspectiveCamera(75, container.value.clientWidth / container.value.clientHeight, 0.1, 1000)
@@ -173,7 +181,48 @@ const initThreeJS = async () => {
   // 动画循环
   const animate = () => {
     requestAnimationFrame(animate)
+    const delta = clock.getDelta()
+    
+    // 更新控制器
     controls.update()
+
+    // 更新玩家动画
+    if (animationProgress < ANIMATION_DURATION) {
+      animationProgress += delta
+      const t = Math.min(animationProgress / ANIMATION_DURATION, 1)
+      const easeT = t * (2 - t) // 缓动函数
+      
+      if (playerModel) {
+        // 位置插值
+        playerModel.position.lerpVectors(currentPlayerPosition, targetPlayerPosition, easeT)
+        // 旋转插值
+        const currentAngle = currentPlayerRotation
+        const targetAngle = targetPlayerRotation
+        const angleDiff = ((targetAngle - currentAngle + Math.PI) % (Math.PI * 2)) - Math.PI
+        playerModel.rotation.y = currentAngle + angleDiff * easeT
+      }
+    }
+
+    // 更新宝石动画
+    const time = clock.getElapsedTime()
+    blueGemMeshes.forEach((gem, index) => {
+      gem.rotation.y = time * 2
+      gem.position.y = gem.userData.basePosition.y + Math.sin(time * 2 + index) * 0.1
+    })
+    redGemMeshes.forEach((gem, index) => {
+      gem.rotation.y = -time * 2
+      gem.position.y = gem.userData.basePosition.y + Math.sin(time * 2 + index + Math.PI) * 0.1
+    })
+
+    // 更新怪物动画
+    monsterMeshes.forEach((monster, index) => {
+      monster.rotation.y = time + index
+      const offset = Math.sin(time * 2 + index) * 0.2
+      monster.position.y = Math.abs(Math.sin(time * 2)) * 0.2
+      monster.position.x = monster.userData.basePosition.x + Math.sin(time + index) * 0.2
+      monster.position.z = monster.userData.basePosition.z + Math.cos(time + index) * 0.2
+    })
+
     renderer.render(scene, camera)
   }
   animate()
@@ -191,10 +240,27 @@ const updateScene = () => {
     scene.remove(playerModel)
     playerModelAdded = false
   }
-  // 更新玩家位置和旋转
-  playerModel.position.x = gameState.value.playerPosition.x - gameState.value.maze[0].length / 2
-  playerModel.position.z = gameState.value.playerPosition.y - gameState.value.maze.length / 2
-  playerModel.rotation.y = -gameState.value.playerDirection * Math.PI / 2 + Math.PI
+
+  // 设置目标位置和旋转
+  targetPlayerPosition.set(
+    gameState.value.playerPosition.x - gameState.value.maze[0].length / 2,
+    0,
+    gameState.value.playerPosition.y - gameState.value.maze.length / 2
+  )
+  targetPlayerRotation = -gameState.value.playerDirection * Math.PI / 2 + Math.PI
+
+  // 如果是第一次设置位置，直接设置而不是动画
+  if (currentPlayerPosition.lengthSq() === 0) {
+    currentPlayerPosition.copy(targetPlayerPosition)
+    playerModel.position.copy(targetPlayerPosition)
+    currentPlayerRotation = targetPlayerRotation
+    playerModel.rotation.y = targetPlayerRotation
+  } else {
+    // 开始新的动画
+    currentPlayerPosition.copy(playerModel.position)
+    currentPlayerRotation = playerModel.rotation.y
+    animationProgress = 0
+  }
 
   // 清除旧的物体
   walls.forEach(wall => scene.remove(wall))
@@ -233,54 +299,64 @@ const updateScene = () => {
     color: 0x0000ff,
     metalness: 0.9,
     roughness: 0.1,
-    envMapIntensity: 1.5
+    envMapIntensity: 1.5,
+    emissive: 0x0000ff,
+    emissiveIntensity: 0.2
   })
   const redGemMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000,
     metalness: 0.9,
     roughness: 0.1,
-    envMapIntensity: 1.5
+    envMapIntensity: 1.5,
+    emissive: 0xff0000,
+    emissiveIntensity: 0.2
   })
 
-  gameState.value.blueGems.forEach(gem => {
+  gameState.value.blueGems.forEach((gem, index) => {
     const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
     let y = 0.5;
     if (gem.x === gameState.value.playerPosition.x && gem.y === gameState.value.playerPosition.y) {
       y = 1.5;
     }
-    blueMesh.position.set(
+    const basePosition = new THREE.Vector3(
       gem.x - gameState.value.maze[0].length / 2,
       y,
       gem.y - gameState.value.maze.length / 2
     )
+    blueMesh.position.copy(basePosition)
+    blueMesh.userData.basePosition = basePosition.clone()
     scene.add(blueMesh)
     blueGemMeshes.push(blueMesh)
   })
 
-  gameState.value.redGems.forEach(gem => {
+  gameState.value.redGems.forEach((gem, index) => {
     const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
     let y = 0.5;
     if (gem.x === gameState.value.playerPosition.x && gem.y === gameState.value.playerPosition.y) {
       y = 1.5;
     }
-    redMesh.position.set(
+    const basePosition = new THREE.Vector3(
       gem.x - gameState.value.maze[0].length / 2,
       y,
       gem.y - gameState.value.maze.length / 2
     )
+    redMesh.position.copy(basePosition)
+    redMesh.userData.basePosition = basePosition.clone()
     scene.add(redMesh)
     redGemMeshes.push(redMesh)
   })
 
   // 创建怪物
-  gameState.value.monsters.forEach(monster => {
+  gameState.value.monsters.forEach((monster, index) => {
     if (monsterModel) {
       const newMonsterModel = monsterModel.clone()
-      newMonsterModel.position.set(
+      const basePosition = new THREE.Vector3(
         monster.x - gameState.value.maze[0].length / 2,
         0,
         monster.y - gameState.value.maze.length / 2
       )
+      newMonsterModel.position.copy(basePosition)
+      newMonsterModel.userData.basePosition = basePosition.clone()
       scene.add(newMonsterModel)
       monsterMeshes.push(newMonsterModel)
     }
@@ -294,7 +370,9 @@ const updateScene = () => {
     roughness: 0.3,
     transparent: true,
     opacity: 0.7,
-    envMapIntensity: 1.2
+    envMapIntensity: 1.2,
+    emissive: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
+    emissiveIntensity: 0.5
   })
   exitMesh = new THREE.Mesh(exitGeometry, exitMaterial)
   exitMesh.position.set(
