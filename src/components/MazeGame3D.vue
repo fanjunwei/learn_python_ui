@@ -316,6 +316,8 @@ const initThreeJS = async () => {
           } else {
             switchAnimation('Idle')
           }
+        } else if (gameState.value.gameOver && gameState.value.success) {
+          switchAnimation('Jump')
         } else {
           switchAnimation('Idle')
         }
@@ -367,7 +369,7 @@ const updateScene = () => {
   })
 
   // 处理游戏结束时的渐隐效果
-  if (gameState.value.gameOver) {
+  if (gameState.value.gameOver && !gameState.value.success) {
     playerFadeOutProgress = 0
   }
 
@@ -381,6 +383,7 @@ const updateScene = () => {
 
   // 如果是第一次设置位置，直接设置而不是动画
   if (gameState.value.action === 'reset') {
+    switchAnimation('Idle')
     currentPlayerPosition.copy(targetPlayerPosition)
     playerModel.position.copy(targetPlayerPosition)
     currentPlayerRotation = targetPlayerRotation
