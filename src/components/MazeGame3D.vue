@@ -88,7 +88,7 @@ const gameState = ref({
 // Three.js 相关变量
 const container = ref(null)
 let scene, camera, renderer, controls
-let playerModel, playerMixer, playerAnimations = {}, monsterModel, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
+let playerModel, playerMixer, playerAnimations = {}, monsterModel, monsterMixer, monsterAnimations = {}, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
 let init = false
 let playerModelAdded = false
 let clock = null
@@ -116,12 +116,8 @@ const loadPlayerModel = async () => {
     // 加载所有动画
     gltf.animations.forEach(clip => {
       const action = playerMixer.clipAction(clip)
-      let name = clip.name
-      if (clip.name === '[动作存放]') {
-        name = 'Idle'
-      }
-      playerAnimations[name] = action
-      console.log('加载动画:', name)
+      playerAnimations[clip.name] = action
+      console.log('加载动画:', clip.name)
     })
 
     // 设置默认动画为待机
@@ -143,10 +139,25 @@ const loadMonsterModel = async () => {
   try {
     const gltf = await loader.loadAsync(new URL('@/assets/3d_model/怪物.glb', import.meta.url).href)
     monsterModel = gltf.scene
-    
+
     // 设置原始模型的变换
-    monsterModel.scale.set(0.4, 0.4, 0.4)
-    monsterModel.position.y = 0.5
+    monsterModel.scale.set(0.5, 0.5, 0.5)
+    monsterModel.position.y = 0
+
+    // 设置动画混合器
+    monsterMixer = new THREE.AnimationMixer(monsterModel)
+
+    // 加载所有动画
+    gltf.animations.forEach(clip => {
+      const action = monsterMixer.clipAction(clip)
+      monsterAnimations[clip.name] = action
+      console.log('加载怪物动画:', clip.name)
+    })
+
+    // 设置默认动画为待机
+    if (monsterAnimations['Idle']) {
+      monsterAnimations['Idle'].play()
+    }
 
     return monsterModel
   } catch (error) {
@@ -232,6 +243,11 @@ const initThreeJS = async () => {
     if (playerMixer) {
       playerMixer.update(delta)
     }
+    monsterMeshes.forEach(monster => {
+      if (monster.userData.mixer) {
+        monster.userData.mixer.update(delta)
+      }
+    })
 
     // 更新玩家动画
     let duration
@@ -294,21 +310,6 @@ const initThreeJS = async () => {
       gem.rotation.y = -time * 2
       gem.position.y = gem.userData.basePosition.y + Math.sin(time * 2 + index + Math.PI) * 0.1
     })
-
-    // 更新怪物动画
-    monsterMeshes.forEach((monster, index) => {
-      const time = clock.getElapsedTime()
-      const basePosition = monster.userData.basePosition
-      
-      // 应用浮动动画
-      monster.position.x = basePosition.x + Math.sin(time + index) * 0.2
-      monster.position.y = basePosition.y + Math.abs(Math.sin(time * 2)) * 0.2
-      monster.position.z = basePosition.z + Math.cos(time + index) * 0.2
-      
-      // 旋转模型
-      monster.rotation.y = time + index
-    })
-
     renderer.render(scene, camera)
   }
   animate()
@@ -352,13 +353,15 @@ const updateScene = () => {
   walls.forEach(wall => scene.remove(wall))
   blueGemMeshes.forEach(gem => scene.remove(gem))
   redGemMeshes.forEach(gem => scene.remove(gem))
-  monsterMeshes.forEach(monster => scene.remove(monster))
   if (exitMesh) scene.remove(exitMesh)
 
   walls = []
   blueGemMeshes = []
   redGemMeshes = []
-  monsterMeshes = []
+  if (gameState.value.action === 'reset') {
+    monsterMeshes.forEach(monster => scene.remove(monster))
+    monsterMeshes = []
+  }
 
   // 创建墙壁
   const wallGeometry = new THREE.BoxGeometry(0.99, 0.99, 0.99)
@@ -431,32 +434,49 @@ const updateScene = () => {
     scene.add(redMesh)
     redGemMeshes.push(redMesh)
   })
+  if (gameState.value.action === 'reset') {
+    // 创建怪物
+    gameState.value.monsters.forEach((monster, index) => {
+      if (monsterModel) {
+        // 使用SkeletonUtils克隆带骨骼的模型
+        const newMonsterModel = SkeletonUtils.clone(monsterModel)
 
-  // 创建怪物
-  gameState.value.monsters.forEach((monster, index) => {
-    if (monsterModel) {
-      // 使用SkeletonUtils克隆带骨骼的模型
-      const newMonsterModel = SkeletonUtils.clone(monsterModel)
-      
-      // 复制原始模型的变换
-      newMonsterModel.scale.copy(monsterModel.scale)
-      newMonsterModel.position.set(
-        monster.x - gameState.value.maze[0].length / 2,
-        monsterModel.position.y,
-        monster.y - gameState.value.maze.length / 2
-      )
-      
-      // 保存基础位置用于动画
-      newMonsterModel.userData.basePosition = new THREE.Vector3(
-        monster.x - gameState.value.maze[0].length / 2,
-        monsterModel.position.y,
-        monster.y - gameState.value.maze.length / 2
-      )
+        // 复制原始模型的变换
+        newMonsterModel.scale.copy(monsterModel.scale)
+        newMonsterModel.position.set(
+          monster.x - gameState.value.maze[0].length / 2,
+          monsterModel.position.y,
+          monster.y - gameState.value.maze.length / 2
+        )
+        newMonsterModel.rotation.y = (monster.x + monster.y) * Math.PI * 0.2
 
-      scene.add(newMonsterModel)
-      monsterMeshes.push(newMonsterModel)
-    }
-  })
+        // 保存基础位置用于动画
+        newMonsterModel.userData.basePosition = new THREE.Vector3(
+          monster.x - gameState.value.maze[0].length / 2,
+          monsterModel.position.y,
+          monster.y - gameState.value.maze.length / 2
+        )
+
+        // 为每个怪物创建独立的动画混合器
+        const mixer = new THREE.AnimationMixer(newMonsterModel)
+        newMonsterModel.userData.mixer = mixer
+
+        // 复制所有动画到新的怪物
+        Object.entries(monsterAnimations).forEach(([name, originalAction]) => {
+          const clip = originalAction.getClip()
+          const action = mixer.clipAction(clip)
+          if (name === 'Idle') {
+            // 为每个怪物错开动画播放时间
+            action.time = index * 2 // 每个怪物错开0.5秒播放
+            action.play()
+          }
+        })
+
+        scene.add(newMonsterModel)
+        monsterMeshes.push(newMonsterModel)
+      }
+    })
+  }
 
   // 创建出口
   const exitGeometry = new THREE.BoxGeometry(1, 0.05, 1)
