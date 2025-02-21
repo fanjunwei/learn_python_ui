@@ -303,12 +303,21 @@ const initThreeJS = async () => {
     // 更新宝石动画
     const time = clock.getElapsedTime()
     blueGemMeshes.forEach((gem, index) => {
-      gem.rotation.y = time * 2
-      gem.position.y = gem.userData.basePosition.y + Math.sin(time * 2 + index) * 0.1
+
+      let distance = Math.sqrt(Math.pow(gem.position.x - playerModel.position.x, 2) + Math.pow(gem.position.z - playerModel.position.z, 2))
+      let y = 0.5
+      if (distance < 1) {
+        y = 0.5 + (1 - distance) * 0.7
+      }
+      gem.position.y = y + Math.sin(time * 2 + index) * 0.1
     })
     redGemMeshes.forEach((gem, index) => {
-      gem.rotation.y = -time * 2
-      gem.position.y = gem.userData.basePosition.y + Math.sin(time * 2 + index + Math.PI) * 0.1
+      let distance = Math.sqrt(Math.pow(gem.position.x - playerModel.position.x, 2) + Math.pow(gem.position.z - playerModel.position.z, 2))
+      let y = 0.5
+      if (distance < 1) {
+        y = 0.5 + (1 - distance) * 0.7
+      }
+      gem.position.y = y + Math.sin(time * 2 + index + Math.PI) * 0.1
     })
     renderer.render(scene, camera)
   }
@@ -351,17 +360,9 @@ const updateScene = () => {
 
   // 清除旧的物体
   walls.forEach(wall => scene.remove(wall))
-  blueGemMeshes.forEach(gem => scene.remove(gem))
-  redGemMeshes.forEach(gem => scene.remove(gem))
   if (exitMesh) scene.remove(exitMesh)
 
   walls = []
-  blueGemMeshes = []
-  redGemMeshes = []
-  if (gameState.value.action === 'reset') {
-    monsterMeshes.forEach(monster => scene.remove(monster))
-    monsterMeshes = []
-  }
 
   // 创建墙壁
   const wallGeometry = new THREE.BoxGeometry(0.99, 0.99, 0.99)
@@ -383,58 +384,73 @@ const updateScene = () => {
   })
 
   // 创建宝石
-  const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
-  const blueGemMaterial = new THREE.MeshStandardMaterial({
-    color: 0x0000ff,
-    metalness: 0.9,
-    roughness: 0.1,
-    envMapIntensity: 1.5,
-    emissive: 0x0000ff,
-    emissiveIntensity: 0.2
-  })
-  const redGemMaterial = new THREE.MeshStandardMaterial({
-    color: 0xff0000,
-    metalness: 0.9,
-    roughness: 0.1,
-    envMapIntensity: 1.5,
-    emissive: 0xff0000,
-    emissiveIntensity: 0.2
-  })
-
-  gameState.value.blueGems.forEach((gem, index) => {
-    const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
-    let y = 0.5;
-    if (gem.x === gameState.value.playerPosition.x && gem.y === gameState.value.playerPosition.y) {
-      y = 1.5;
+  if (gameState.value.action === 'reset' || gameState.value.action === 'collect_blue') {
+    const createBlueGem = () => {
+      blueGemMeshes.forEach(gem => scene.remove(gem))
+      blueGemMeshes = []
+      const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
+      const blueGemMaterial = new THREE.MeshStandardMaterial({
+        color: 0x0000ff,
+        metalness: 0.9,
+        roughness: 0.1,
+        envMapIntensity: 1.5,
+        emissive: 0x0000ff,
+        emissiveIntensity: 0.2
+      })
+      gameState.value.blueGems.forEach((gem, index) => {
+        const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
+        blueMesh.position.set(
+          gem.x - gameState.value.maze[0].length / 2,
+          0.5,
+          gem.y - gameState.value.maze.length / 2
+        )
+        scene.add(blueMesh)
+        blueGemMeshes.push(blueMesh)
+      })
     }
-    const basePosition = new THREE.Vector3(
-      gem.x - gameState.value.maze[0].length / 2,
-      y,
-      gem.y - gameState.value.maze.length / 2
-    )
-    blueMesh.position.copy(basePosition)
-    blueMesh.userData.basePosition = basePosition.clone()
-    scene.add(blueMesh)
-    blueGemMeshes.push(blueMesh)
-  })
-
-  gameState.value.redGems.forEach((gem, index) => {
-    const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
-    let y = 0.5;
-    if (gem.x === gameState.value.playerPosition.x && gem.y === gameState.value.playerPosition.y) {
-      y = 1.5;
+    if (gameState.value.action === 'reset') {
+      createBlueGem()
+    } else if (gameState.value.action === 'collect_blue') {
+      setTimeout(() => {
+        createBlueGem()
+      }, 1000)
     }
-    const basePosition = new THREE.Vector3(
-      gem.x - gameState.value.maze[0].length / 2,
-      y,
-      gem.y - gameState.value.maze.length / 2
-    )
-    redMesh.position.copy(basePosition)
-    redMesh.userData.basePosition = basePosition.clone()
-    scene.add(redMesh)
-    redGemMeshes.push(redMesh)
-  })
+  }
+  if (gameState.value.action === 'reset' || gameState.value.action === 'collect_red') {
+    const createRedGem = () => {
+      redGemMeshes.forEach(gem => scene.remove(gem))
+      redGemMeshes = []
+      const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
+      const redGemMaterial = new THREE.MeshStandardMaterial({
+        color: 0xff0000,
+        metalness: 0.9,
+        roughness: 0.1,
+        envMapIntensity: 1.5,
+        emissive: 0xff0000,
+        emissiveIntensity: 0.2
+      })
+      gameState.value.redGems.forEach((gem, index) => {
+        const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
+        redMesh.position.set(
+          gem.x - gameState.value.maze[0].length / 2,
+          0.5,
+          gem.y - gameState.value.maze.length / 2
+        )
+        scene.add(redMesh)
+        redGemMeshes.push(redMesh)
+      })
+    }
+    if (gameState.value.action === 'reset') {
+      createRedGem()
+    } else if (gameState.value.action === 'collect_red') {
+      setTimeout(() => {
+        createRedGem()
+      }, 1000)
+    }
+  }
   if (gameState.value.action === 'reset') {
+    monsterMeshes.forEach(monster => scene.remove(monster))
+    monsterMeshes = []
     // 创建怪物
     gameState.value.monsters.forEach((monster, index) => {
       if (monsterModel) {
@@ -450,12 +466,7 @@ const updateScene = () => {
         )
         newMonsterModel.rotation.y = (monster.x + monster.y) * Math.PI * 0.2
 
-        // 保存基础位置用于动画
-        newMonsterModel.userData.basePosition = new THREE.Vector3(
-          monster.x - gameState.value.maze[0].length / 2,
-          monsterModel.position.y,
-          monster.y - gameState.value.maze.length / 2
-        )
+        // 为每个怪物创建独立的动画混合器
 
         // 为每个怪物创建独立的动画混合器
         const mixer = new THREE.AnimationMixer(newMonsterModel)
