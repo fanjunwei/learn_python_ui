@@ -58,3 +58,9 @@ body {
 .el-button>span {
     gap: 2px;
 }
+
+.svg-icon {
+  width: 1em;
+  height: 1em;
+  margin-right: 8px;
+}

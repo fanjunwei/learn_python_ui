@@ -1,9 +1,19 @@
 const { defineConfig } = require('vite')
 const vue = require('@vitejs/plugin-vue')
 const path = require('path')
+const svgLoader = require('vite-svg-loader')
 
 module.exports = defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue({
+      template: {
+        transformAssetUrls: {
+          includeAbsolute: false,
+        },
+      },
+    }),
+    svgLoader()
+  ],
   base: './',
   resolve: {
     alias: {
@@ -19,5 +29,10 @@ module.exports = defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     emptyOutDir: true
+  },
+  svgLoader: {
+    svgoConfig: {
+      multipass: true
+    }
   }
 }) 

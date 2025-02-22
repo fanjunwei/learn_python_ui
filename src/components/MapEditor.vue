@@ -34,6 +34,10 @@
               </el-icon>
               怪物
             </el-radio-button>
+            <el-radio-button label="teleport">
+              <TeleportIcon class="svg-icon" />
+              传送门
+            </el-radio-button>
             <el-radio-button label="start">
               <el-icon>
                 <Position />
@@ -89,6 +93,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import TeleportIcon from '@/assets/icons/teleport.svg?component'
+
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -319,6 +325,8 @@ const removeAllAtPosition = (x, y) => {
 
 // 初始化
 initMap()
+
+
 </script>
 
 <style scoped>
