@@ -34,42 +34,6 @@ body {
     margin: 20px 0;
 }
 
-.toast {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 12px 24px;
-    border-radius: 4px;
-    font-size: 16px;
-    z-index: 1000;
-    animation: toastAnimation 2s ease-in-out forwards;
-}
-
-@keyframes toastAnimation {
-    0% {
-        opacity: 0;
-        transform: translate(-50%, -20px);
-    }
-
-    15% {
-        opacity: 1;
-        transform: translate(-50%, 0);
-    }
-
-    85% {
-        opacity: 1;
-        transform: translate(-50%, 0);
-    }
-
-    100% {
-        opacity: 0;
-        transform: translate(-50%, -20px);
-    }
-}
-
  .el-radio-button span.el-radio-button__inner {
     display: flex;
     gap: 2px;

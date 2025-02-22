@@ -88,6 +88,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -337,10 +338,6 @@ initMap()
   display: flex;
   align-items: center;
 }
-
-
-
-
 
 .file-controls {
   display: flex;

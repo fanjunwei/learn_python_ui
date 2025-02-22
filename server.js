@@ -2,8 +2,51 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
+const fs = require('fs').promises;
+const path = require('path');
 let mainWindow;
 let speed = 100;
+
+// 获取用户数据目录
+const getUserDataPath = () => {
+  const app = require('electron').app || require('@electron/remote').app;
+  return path.join(app.getPath('userData'), 'game_data');
+};
+
+// 确保目录存在
+const ensureDirectoryExists = async (dirPath) => {
+  try {
+    await fs.access(dirPath);
+  } catch {
+    await fs.mkdir(dirPath, { recursive: true });
+  }
+};
+
+// 保存当前地图配置
+const saveCurrentConfig = async (config) => {
+  try {
+    const dataDir = getUserDataPath();
+    await ensureDirectoryExists(dataDir);
+    const configPath = path.join(dataDir, 'current_map.json');
+    await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+    console.log('地图配置已保存');
+  } catch (error) {
+    console.error('保存地图配置失败:', error);
+  }
+};
+
+// 加载保存的地图配置
+const loadSavedConfig = async () => {
+  try {
+    const configPath = path.join(getUserDataPath(), 'current_map.json');
+    await fs.access(configPath);
+    const configData = await fs.readFile(configPath, 'utf-8');
+    return JSON.parse(configData);
+  } catch (error) {
+    console.error('加载地图配置失败:', error);
+    return null;
+  }
+};
 
 app.use(express.json());
 
@@ -71,10 +114,16 @@ app.get('/getGameState', (req, res) => {
 })
 
 // 重置游戏
-app.post('/resetGame', (req, res) => {
+app.post('/resetGame', async (req, res) => {
   console.log('收到重置游戏请求')
   const config = req.body.config || currentConfig || defaultMazeConfig
   currentConfig = config
+  
+  // 如果提供了新的配置，保存它
+  if (req.body.config) {
+    await saveCurrentConfig(config)
+  }
+  
   resetGameState(config)
 
   const renderState = generateRenderState()
@@ -166,12 +215,14 @@ app.post('/move', async (req, res) => {
   }
   if (action === 'collect_blue') {
     if (!result.gemCollected) {
+      result.success = false
       result.message = '没有蓝宝石！';
       mainWindow.webContents.send('playAudio', 'error');
     }
   }
   if (action === 'collect_red') {
     if (!result.gemCollected) {
+      result.success = false
       result.message = '没有红宝石！';
       mainWindow.webContents.send('playAudio', 'error');
     }
@@ -181,7 +232,11 @@ app.post('/move', async (req, res) => {
     mainWindow.webContents.send('renderGameState', renderState);
   }
   if (result.message) {
-    mainWindow.webContents.send('showToast', result.message);
+    let type = 'success'
+    if (!result.success) {
+      type = 'error'
+    }
+    mainWindow.webContents.send('showToast', result.message, type);
   }
   let waitTime = 1000;
   if (action === 'forward') {
@@ -343,8 +398,16 @@ function checkCollisions(result, operate) {
 const port = 3000;
 let server = null;
 
-function startServer(window) {
+async function startServer(window) {
   mainWindow = window;
+  
+  // 尝试加载保存的配置
+  const savedConfig = await loadSavedConfig();
+  if (savedConfig) {
+    console.log('加载保存的地图配置');
+    currentConfig = savedConfig;
+  }
+  
   server = http.listen(port, () => {
     console.log(`服务器运行在 http://localhost:${port}`);
   });

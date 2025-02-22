@@ -67,7 +67,6 @@
         重置游戏
       </el-button>
     </div>
-    <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
 </template>
 
@@ -95,17 +94,6 @@ const gameState = ref({
   onGemType: 'none',
   autoCollect: false,
 })
-
-// Toast消息
-const toast = ref('')
-
-// 显示提示消息
-const showToast = (message) => {
-  toast.value = message
-  setTimeout(() => {
-    toast.value = ''
-  }, 2000)
-}
 
 // 计算属性
 const mazeGridStyle = computed(() => {
@@ -225,9 +213,6 @@ const handleRenderGameState = (event, state) => {
   }
 }
 
-const handleShowToast = (event, message) => {
-  showToast(message)
-}
 
 // 监听服务器消息
 onMounted(async () => {

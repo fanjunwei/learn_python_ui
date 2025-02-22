@@ -1,0 +1,40 @@
+title = "迷宫配置"
+maze = [
+  [ 1, 1, 1, 1, 1, 0 ],
+  [ 1, 1, 1, 1, 1, 0 ],
+  [ 1, 1, 1, 1, 1, 1 ],
+  [ 1, 1, 1, 1, 1, 1 ],
+  [ 1, 1, 1, 1, 1, 1 ],
+  [ 1, 1, 1, 1, 1, 1 ]
+]
+monsters = [ ]
+requiredBlueGems = 2
+requiredRedGems = 3
+
+[start]
+x = 0
+y = 0
+
+[[blueGems]]
+x = 1
+y = 0
+
+[[blueGems]]
+x = 1
+y = 1
+
+[[redGems]]
+x = 2
+y = 1
+
+[[redGems]]
+x = 2
+y = 2
+
+[[redGems]]
+x = 3
+y = 2
+
+[exit]
+x = 5
+y = 5

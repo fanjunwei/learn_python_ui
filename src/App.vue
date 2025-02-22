@@ -46,10 +46,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import MazeGame from './components/MazeGame.vue'
 import MazeGame3D from './components/MazeGame3D.vue'
 import MapEditor from './components/MapEditor.vue'
+import { ElMessage } from 'element-plus'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -199,11 +200,26 @@ const loadMap = async () => {
     ElMessage.error('加载失败：' + error.message)
   }
 }
+const handleShowToast = (event, message, type) => {
+  if (!type) {
+    type = 'success'
+  }
+  if (type === 'success') {
+    ElMessage.success(message)
+  } else if (type === 'error') {
+    ElMessage.error(message)
+  }
+}
 onMounted(async () => {
   ipcRenderer.on('playAudio', handlePlayAudio)
+  ipcRenderer.on('showToast', handleShowToast)
   loadSettings() // 加载保存的设置
 })
+onUnmounted(() => {
+  ipcRenderer.removeListener('playAudio', handlePlayAudio)
+  ipcRenderer.removeListener('showToast', handleShowToast)
 
+})
 </script>
 
 <style>
