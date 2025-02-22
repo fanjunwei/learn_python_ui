@@ -21,19 +21,19 @@
           <span>地图编辑器</span>
         </el-menu-item>
         <div class="flex-spacer"></div>
-        速度：
-        <div class="slider-block">
-          <el-slider v-model="speed" :min="0" :max="100" :step="1" @change="handleSpeedChange" />
-        </div>
-        <div class="mute-switch">
-         静音：
-          <el-switch
-            v-model="isMuted"
-            @change="handleMuteChange"
-            active-text="开"
-            inactive-text="关"
-            style="margin-left: 8px"
-          />
+        <div v-if="currentView !== 'editor'" class="game-settings">
+          <div class="button-block">
+            <el-button type="primary" @click="loadMap">加载地图</el-button>
+          </div>
+          速度：
+          <div class="slider-block">
+            <el-slider v-model="speed" :min="0" :max="100" :step="1" @change="handleSpeedChange" />
+          </div>
+          <div class="mute-switch">
+            静音：
+            <el-switch v-model="isMuted" @change="handleMuteChange" active-text="开" inactive-text="关"
+              style="margin-left: 8px" />
+          </div>
         </div>
       </el-menu>
     </el-header>
@@ -117,6 +117,14 @@ const handleSpeedChange = (value) => {
   saveSettings()
 }
 
+const resetGame = async (config) => {
+  await fetch('http://localhost:3000/resetGame', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ config: config })
+  })
+}
+
 const handleMuteChange = (value) => {
   if (value) {
     // 静音
@@ -176,7 +184,21 @@ const handlePlayAudio = (event, audioType) => {
     }
   }
 }
-
+const loadMap = async () => {
+  try {
+    const result = await ipcRenderer.invoke('load-map')
+    if (result.success) {
+      const config = result.data
+      config.maze = config.maze.map(row => row.map(cell => ({ walkable: cell })))
+      resetGame(config)
+      ElMessage.success('地图加载成功！')
+    } else if (result.message) {
+      ElMessage.error('加载失败：' + result.message)
+    }
+  } catch (error) {
+    ElMessage.error('加载失败：' + error.message)
+  }
+}
 onMounted(async () => {
   ipcRenderer.on('playAudio', handlePlayAudio)
   loadSettings() // 加载保存的设置
@@ -208,5 +230,15 @@ onMounted(async () => {
   margin-left: 12px;
   margin-right: 20px;
   width: 100px;
+}
+
+.button-block {
+  margin-right: 10px;
+}
+
+.game-settings {
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
 }
 </style>
