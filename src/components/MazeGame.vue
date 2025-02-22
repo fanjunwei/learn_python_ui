@@ -28,6 +28,9 @@
             <!-- 出口 -->
             <div v-if="isExit(x, y)" class="gate" :class="{ 'open': gameState.exitOpen }">
             </div>
+            <!-- 传送门 -->
+            <div v-if="isTeleportGate(x, y)" class="teleport-gate" :style="teleportGateStyle(x, y)">
+            </div>
             <!-- 玩家 -->
             <div v-if="isPlayerPosition(x, y) && !gameState.gameOver" :class="playerClass">
             </div>
@@ -132,6 +135,18 @@ const hasMonster = (x, y) => {
 
 const isExit = (x, y) => {
   return x === gameState.value.exit.x && y === gameState.value.exit.y
+}
+
+const isTeleportGate = (x, y) => {
+  return gameState.value.teleportGates.some(t => t.some(g => g.x === x && g.y === y))
+}
+
+const teleportGateStyle = (x, y) => {
+  const gate = gameState.value.teleportGates.find(t => t.some(g => g.x === x && g.y === y))
+  let color = (gate[0].x + gate[0].y)*100 % 360
+  return {
+    '--teleport-base-color': `hsl(${color}, 70%, 50%)`
+  }
 }
 
 // 游戏操作
@@ -423,5 +438,30 @@ onUnmounted(() => {
 
 .cell.wall {
   background-color: #333;
+}
+
+.teleport-gate {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background: conic-gradient(
+    from 0deg,
+    var(--teleport-base-color, #4a90e2) 0%,
+    color-mix(in srgb, var(--teleport-base-color, #4a90e2) 80%, white) 25%,
+    var(--teleport-base-color, #4a90e2) 50%,
+    color-mix(in srgb, var(--teleport-base-color, #4a90e2) 80%, white) 75%,
+    var(--teleport-base-color, #4a90e2) 100%
+  );
+  animation: rotate 2s linear infinite;
+  border-radius: 50%;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

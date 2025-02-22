@@ -10,7 +10,9 @@ let speed = 100;
 // 获取用户数据目录
 const getUserDataPath = () => {
   const app = require('electron').app || require('@electron/remote').app;
-  return path.join(app.getPath('userData'), 'game_data');
+  let userDataPath = path.join(app.getPath('userData'), 'game_data');
+  console.log('getUserDataPath:', userDataPath)
+  return userDataPath;
 };
 
 // 确保目录存在
@@ -80,9 +82,10 @@ const defaultMazeConfig = {
     [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }]
   ],
   start: { x: 0, y: 0 },
-  blueGems: [{ x: 2, y: 2 }, { x: 4, y: 0 }, { x: 0, y: 4 }],
-  redGems: [{ x: 0, y: 2 }, { x: 2, y: 0 }, { x: 4, y: 4 }],
+  blueGems: [{ x: 2, y: 2 }, { x: 0, y: 4 }],
+  redGems: [{ x: 2, y: 0 }, { x: 4, y: 4 }],
   monsters: [{ x: 2, y: 1 }, { x: 2, y: 3 }],
+  teleportGates: [[{ x: 4, y: 0 }, { x: 0, y: 2 }], [{ x: 3, y: 2 }, { x: 0, y: 3 }]],
   exit: { x: 4, y: 2 },
   requiredBlueGems: 3,
   requiredRedGems: 3,
@@ -118,12 +121,12 @@ app.post('/resetGame', async (req, res) => {
   console.log('收到重置游戏请求')
   const config = req.body.config || currentConfig || defaultMazeConfig
   currentConfig = config
-  
+
   // 如果提供了新的配置，保存它
   if (req.body.config) {
     await saveCurrentConfig(config)
   }
-  
+
   resetGameState(config)
 
   const renderState = generateRenderState()
@@ -166,6 +169,19 @@ app.post('/move', async (req, res) => {
     reachedExit: false,
     message: ''
   };
+  if (gameState.onTeleport) {
+    await new Promise(resolve => {
+      const check = () => {
+        if (!gameState.onTeleport) {
+          console.log('传送结束')
+          resolve();
+        } else {
+          setTimeout(check, 200);
+        }
+      }
+      check();
+    });
+  }
   if (gameState.gameOver) {
     result.message = '游戏已结束！';
     res.json({
@@ -262,6 +278,7 @@ function resetGameState(config) {
   gameState.blueGems = JSON.parse(JSON.stringify(config.blueGems));
   gameState.redGems = JSON.parse(JSON.stringify(config.redGems));
   gameState.monsters = JSON.parse(JSON.stringify(config.monsters));
+  gameState.teleportGates = JSON.parse(JSON.stringify(config.teleportGates));
   gameState.exit = { ...config.exit };
   gameState.requiredBlueGems = config.requiredBlueGems;
   gameState.requiredRedGems = config.requiredRedGems;
@@ -377,6 +394,40 @@ function checkCollisions(result, operate) {
     gameState.success = false;
   }
 
+  // 检查传送门
+  let teleportGate = null;
+  // 检查是否在传送门上, 传送门是两个点, 如果角色在一个点上, 则传送到另一个点上
+  gameState.teleportGates.some(t => {
+    return t.some(g => {
+      if (t.length === 2) {
+        const isOnGate = (gate, otherGate) => {
+          let check = gate.x === pos.x && gate.y === pos.y;
+          if (check) {
+            return otherGate;
+          }
+          return null;
+        }
+        teleportGate = isOnGate(t[0], t[1]) || isOnGate(t[1], t[0]);
+        return !!teleportGate;
+      }
+      return false;
+    })
+  })
+  if (teleportGate) {
+    let timeout = 200;
+    timeout = timeout * (100 - speed) / 100;
+    gameState.onTeleport = true;
+    setTimeout(() => {
+      if (teleportGate) {
+        gameState.onTeleport = false;
+        gameState.playerPosition = teleportGate;
+        gameState.action = 'teleport';
+        mainWindow.webContents.send('playAudio', 'teleport');
+        mainWindow.webContents.send('renderGameState', generateRenderState());
+      }
+    }, timeout);
+  }
+
   // 检查是否开启出口
   if (gameState.collectedBlueGems >= gameState.requiredBlueGems &&
     gameState.collectedRedGems >= gameState.requiredRedGems) {
@@ -400,14 +451,14 @@ let server = null;
 
 async function startServer(window) {
   mainWindow = window;
-  
+
   // 尝试加载保存的配置
   const savedConfig = await loadSavedConfig();
   if (savedConfig) {
     console.log('加载保存的地图配置');
     currentConfig = savedConfig;
   }
-  
+
   server = http.listen(port, () => {
     console.log(`服务器运行在 http://localhost:${port}`);
   });
