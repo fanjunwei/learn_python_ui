@@ -84,15 +84,38 @@ const fadeOutBgm = () => {
   }, fadeOutInterval)
 }
 
+const isMuted = ref(false)
+
+// 保存设置到本地存储
+const saveSettings = () => {
+  const settings = {
+    speed: speed.value,
+    isMuted: isMuted.value
+  }
+  localStorage.setItem('gameSettings', JSON.stringify(settings))
+}
+
+// 从本地存储加载设置
+const loadSettings = () => {
+  const settings = localStorage.getItem('gameSettings')
+  if (settings) {
+    const { speed: savedSpeed, isMuted: savedMuted } = JSON.parse(settings)
+    speed.value = savedSpeed
+    isMuted.value = savedMuted
+    // 应用加载的设置
+    handleSpeedChange(speed.value)
+    handleMuteChange(isMuted.value)
+  }
+}
+
 const handleSpeedChange = (value) => {
   fetch('http://localhost:3000/setSpeed', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ speed: value })
   })
+  saveSettings()
 }
-
-const isMuted = ref(false)
 
 const handleMuteChange = (value) => {
   if (value) {
@@ -110,6 +133,7 @@ const handleMuteChange = (value) => {
     completeAudio.value.volume = 1
     errorAudio.value.volume = 1
   }
+  saveSettings()
 }
 
 const handlePlayAudio = (event, audioType) => {
@@ -155,7 +179,7 @@ const handlePlayAudio = (event, audioType) => {
 
 onMounted(async () => {
   ipcRenderer.on('playAudio', handlePlayAudio)
-  handleSpeedChange(speed.value)
+  loadSettings() // 加载保存的设置
 })
 
 </script>
