@@ -20,6 +20,21 @@
           </el-icon>
           <span>地图编辑器</span>
         </el-menu-item>
+        <div class="flex-spacer"></div>
+        速度：
+        <div class="slider-block">
+          <el-slider v-model="speed" :min="0" :max="100" :step="1" @change="handleSpeedChange" />
+        </div>
+        <div class="mute-switch">
+         静音：
+          <el-switch
+            v-model="isMuted"
+            @change="handleMuteChange"
+            active-text="开"
+            inactive-text="关"
+            style="margin-left: 8px"
+          />
+        </div>
       </el-menu>
     </el-header>
     <el-main>
@@ -31,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import MazeGame from './components/MazeGame.vue'
 import MazeGame3D from './components/MazeGame3D.vue'
 import MapEditor from './components/MapEditor.vue'
@@ -39,6 +54,7 @@ const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
 const currentView = ref('game3d')
+const speed = ref(0)
 // 背景音乐
 const bgm = ref(new Audio(new URL('@/assets/audio/bgm.mp3', import.meta.url).href))
 bgm.value.loop = true
@@ -68,7 +84,40 @@ const fadeOutBgm = () => {
   }, fadeOutInterval)
 }
 
+const handleSpeedChange = (value) => {
+  fetch('http://localhost:3000/setSpeed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ speed: value })
+  })
+}
+
+const isMuted = ref(false)
+
+const handleMuteChange = (value) => {
+  if (value) {
+    // 静音
+    bgm.value.volume = 0
+    getGemAudio.value.volume = 0
+    getMonsterAudio.value.volume = 0
+    completeAudio.value.volume = 0
+    errorAudio.value.volume = 0
+  } else {
+    // 取消静音
+    bgm.value.volume = 1
+    getGemAudio.value.volume = 1
+    getMonsterAudio.value.volume = 1
+    completeAudio.value.volume = 1
+    errorAudio.value.volume = 1
+  }
+}
+
 const handlePlayAudio = (event, audioType) => {
+
+  if (isMuted.value && audioType !== 'play_bgm') {
+    return
+  }
+
   if (audioType === 'gem') {
     if (getGemAudio.value.played) {
       getGemAudio.value.pause()
@@ -91,7 +140,7 @@ const handlePlayAudio = (event, audioType) => {
     errorAudio.value.play()
   } else if (audioType === 'play_bgm') {
     if (bgm.value.paused) {
-      bgm.value.volume = 1
+      bgm.value.volume = isMuted.value ? 0 : 1
       bgm.value.currentTime = 0
       bgm.value.play().catch(error => {
         console.warn('背景音乐播放失败:', error)
@@ -103,8 +152,10 @@ const handlePlayAudio = (event, audioType) => {
     }
   }
 }
+
 onMounted(async () => {
   ipcRenderer.on('playAudio', handlePlayAudio)
+  handleSpeedChange(speed.value)
 })
 
 </script>
@@ -112,5 +163,26 @@ onMounted(async () => {
 <style>
 .app-container {
   min-height: 100vh;
+}
+
+.flex-spacer {
+  flex: 1;
+}
+
+.mute-switch {
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.el-menu {
+  display: flex !important;
+  align-items: center;
+}
+
+.slider-block {
+  margin-left: 12px;
+  margin-right: 20px;
+  width: 100px;
 }
 </style>

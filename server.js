@@ -3,6 +3,7 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 let mainWindow;
+let speed = 100;
 
 app.use(express.json());
 
@@ -95,6 +96,15 @@ app.post('/resetGame', (req, res) => {
   })
 })
 
+app.post('/setSpeed', (req, res) => {
+  speed = req.body.speed;
+  console.log('速度已设置:', speed)
+  res.json({
+    success: true,
+    message: '速度已设置'
+  })
+})
+
 // 处理移动请求
 app.post('/move', async (req, res) => {
   const { action } = req.body;
@@ -177,7 +187,8 @@ app.post('/move', async (req, res) => {
   if (action === 'forward') {
     waitTime = 2000;
   }
-
+  waitTime = waitTime * (100 - speed) / 100;
+  console.log('waitTime:', waitTime)
   await new Promise(resolve => {
     setTimeout(() => {
       res.json({
