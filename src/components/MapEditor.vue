@@ -81,7 +81,7 @@
       <div class="map-grid" :style="gridStyle">
         <div v-for="(row, y) in mapData" :key="y" class="map-row">
           <div v-for="(cell, x) in row" :key="x" class="map-cell" :class="getCellClasses(x, y)"
-            @mouseover="handleCellHover(x, y)" @mousedown="handleCellDown(x, y)"
+            :style="teleportGateStyle(x, y)" @mouseover="handleCellHover(x, y)" @mousedown="handleCellDown(x, y)"
             @mouseup="handleCellUp(x, y)">
           </div>
         </div>
@@ -111,6 +111,7 @@ const redGems = ref([])
 const monsters = ref([])
 const startPos = ref(null)
 const exitPos = ref(null)
+const teleportPos = ref([])
 
 // 保存地图
 const saveMap = async () => {
@@ -248,14 +249,39 @@ const getCellClasses = (x, y) => {
     'red-gem': redGems.value.some(g => g.x === x && g.y === y),
     'monster': monsters.value.some(m => m.x === x && m.y === y),
     'start': startPos.value && startPos.value.x === x && startPos.value.y === y,
-    'exit': exitPos.value && exitPos.value.x === x && exitPos.value.y === y
+    'exit': exitPos.value && exitPos.value.x === x && exitPos.value.y === y,
+    'teleport-gate': teleportPos.value.some(t => t.some(g => g.x === x && g.y === y)),
   }
   return classes
 }
-
+const teleportGateStyle = (x, y) => {
+  // const gate = teleportPos.value.find(t => t.some(g => g.x === x && g.y === y))
+  const index = teleportPos.value.findIndex(t => t.some(g => g.x === x && g.y === y))
+  if (index !== -1) {
+    let color = index * 50 % 360
+    return {
+      '--teleport-base-color': `hsl(${color}, 70%, 50%)`
+    }
+  } else {
+    return {}
+  }
+}
+let teleportGateState = ref(0);
+let teleportGate0 = { x: 0, y: 0 };
 const handleCellDown = (x, y) => {
-  isDrawing.value = true
-  handleCellModification(x, y)
+  if (currentTool.value === 'teleport') {
+    if (teleportGateState.value === 0) {
+      teleportGate0.value = { x, y }
+      teleportGateState.value = 1
+    } else {
+      teleportPos.value.push([teleportGate0.value, { x, y }])
+      teleportGateState.value = 0
+      console.log(teleportPos.value)
+    }
+  } else {
+    isDrawing.value = true
+    handleCellModification(x, y)
+  }
 }
 const handleCellUp = (x, y) => {
   isDrawing.value = false
@@ -269,6 +295,7 @@ const handleCellHover = (x, y) => {
 
 // 处理单元格修改
 const handleCellModification = (x, y) => {
+  console.log(currentTool.value)
   switch (currentTool.value) {
     case 'wall':
       mapData.value[y][x].walkable = false
@@ -424,6 +451,21 @@ initMap()
   transform: translate(-50%, -50%);
   background: url('@/assets/monster.png') 0 0;
   background-size: 160px 160px;
+}
+
+.map-cell.teleport-gate::after {
+  content: '';
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background: conic-gradient(from 0deg,
+      var(--teleport-base-color, #4a90e2) 0%,
+      color-mix(in srgb, var(--teleport-base-color, #4a90e2) 80%, white) 25%,
+      var(--teleport-base-color, #4a90e2) 50%,
+      color-mix(in srgb, var(--teleport-base-color, #4a90e2) 80%, white) 75%,
+      var(--teleport-base-color, #4a90e2) 100%);
+  animation: rotate 2s linear infinite;
+  border-radius: 50%;
 }
 
 .map-cell.start {
