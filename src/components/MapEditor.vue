@@ -12,7 +12,7 @@
             </el-form-item>
           </el-form>
         </el-col>
-        <el-col :span="13">
+        <el-col :span="12">
           <el-radio-group v-model="currentTool">
             <el-radio-button label="wall">
               <el-icon>
@@ -58,7 +58,7 @@
             </el-radio-button>
           </el-radio-group>
         </el-col>
-        <el-col :span="5">
+        <el-col :span="6">
           <div class="file-controls">
             <el-button type="primary" @click="loadMap">
               <el-icon>
@@ -71,6 +71,12 @@
                 <Download />
               </el-icon>
               保存地图
+            </el-button>
+            <el-button type="danger" @click="resetMap">
+              <el-icon>
+                <Refresh />
+              </el-icon>
+              重置
             </el-button>
           </div>
         </el-col>
@@ -157,6 +163,11 @@ const saveMap = async () => {
   }
 }
 
+// 重置地图
+const resetMap = () => {
+  initMap()
+}
+
 // 加载地图
 const loadMap = async () => {
   try {
@@ -192,6 +203,14 @@ const initMap = () => {
   mapData.value = Array(height.value).fill().map(() =>
     Array(width.value).fill().map(() => ({ walkable: true }))
   )
+  teleportGates.value = []
+  teleportGateState.value = 0
+  teleportGate0.value = { x: 0, y: 0 }
+  startPos.value = null
+  exitPos.value = null
+  blueGems.value = []
+  redGems.value = []
+  monsters.value = []
 }
 
 // 调整地图大小
