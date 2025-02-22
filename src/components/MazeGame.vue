@@ -142,10 +142,14 @@ const isTeleportGate = (x, y) => {
 }
 
 const teleportGateStyle = (x, y) => {
-  const gate = gameState.value.teleportGates.find(t => t.some(g => g.x === x && g.y === y))
-  let color = (gate[0].x + gate[0].y)*100 % 360
-  return {
-    '--teleport-base-color': `hsl(${color}, 70%, 50%)`
+  const index = gameState.value.teleportGates.findIndex(t => t.some(g => g.x === x && g.y === y))
+  if (index !== -1) {
+    let color = index * 50 % 360
+    return {
+      '--teleport-base-color': `hsl(${color}, 70%, 50%)`
+    }
+  } else {
+    return {}
   }
 }
 

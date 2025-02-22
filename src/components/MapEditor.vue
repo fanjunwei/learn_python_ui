@@ -91,7 +91,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import TeleportIcon from '@/assets/icons/teleport.svg?component'
 
@@ -111,7 +111,7 @@ const redGems = ref([])
 const monsters = ref([])
 const startPos = ref(null)
 const exitPos = ref(null)
-const teleportPos = ref([])
+const teleportGates = ref([])
 
 // 保存地图
 const saveMap = async () => {
@@ -136,6 +136,7 @@ const saveMap = async () => {
     blueGems: blueGems.value.map(gem => ({ x: gem.x, y: gem.y })),
     redGems: redGems.value.map(gem => ({ x: gem.x, y: gem.y })),
     monsters: monsters.value.map(monster => ({ x: monster.x, y: monster.y })),
+    teleportGates,
     exit: {
       x: exitPos.value.x,
       y: exitPos.value.y
@@ -174,6 +175,7 @@ const loadMap = async () => {
       blueGems.value = config.blueGems
       redGems.value = config.redGems
       monsters.value = config.monsters
+      teleportGates.value = config.teleportGates
       startPos.value = config.start
       exitPos.value = config.exit
       ElMessage.success('地图加载成功！')
@@ -250,13 +252,13 @@ const getCellClasses = (x, y) => {
     'monster': monsters.value.some(m => m.x === x && m.y === y),
     'start': startPos.value && startPos.value.x === x && startPos.value.y === y,
     'exit': exitPos.value && exitPos.value.x === x && exitPos.value.y === y,
-    'teleport-gate': teleportPos.value.some(t => t.some(g => g.x === x && g.y === y)),
+    'teleport-gate': teleportGates.value.some(t => t.some(g => g.x === x && g.y === y)),
+    'teleport-gate-0': teleportGateState.value === 1 && teleportGate0.value.x === x && teleportGate0.value.y === y,
   }
   return classes
 }
 const teleportGateStyle = (x, y) => {
-  // const gate = teleportPos.value.find(t => t.some(g => g.x === x && g.y === y))
-  const index = teleportPos.value.findIndex(t => t.some(g => g.x === x && g.y === y))
+  const index = teleportGates.value.findIndex(t => t.some(g => g.x === x && g.y === y))
   if (index !== -1) {
     let color = index * 50 % 360
     return {
@@ -268,20 +270,15 @@ const teleportGateStyle = (x, y) => {
 }
 let teleportGateState = ref(0);
 let teleportGate0 = { x: 0, y: 0 };
-const handleCellDown = (x, y) => {
-  if (currentTool.value === 'teleport') {
-    if (teleportGateState.value === 0) {
-      teleportGate0.value = { x, y }
-      teleportGateState.value = 1
-    } else {
-      teleportPos.value.push([teleportGate0.value, { x, y }])
-      teleportGateState.value = 0
-      console.log(teleportPos.value)
-    }
-  } else {
-    isDrawing.value = true
-    handleCellModification(x, y)
+
+watch(currentTool, (newVal) => {
+  if (newVal !== 'teleport') {
+    teleportGateState.value = 0
   }
+})
+const handleCellDown = (x, y) => {
+  isDrawing.value = true
+  handleCellModification(x, y)
 }
 const handleCellUp = (x, y) => {
   isDrawing.value = false
@@ -334,6 +331,18 @@ const handleCellModification = (x, y) => {
         exitPos.value = { x, y }
       }
       break
+    case 'teleport':
+      if (mapData.value[y][x].walkable) {
+        removeAllAtPosition(x, y)
+        if (teleportGateState.value === 0) {
+          teleportGate0.value = { x, y }
+          teleportGateState.value = 1
+        } else {
+          teleportGates.value.push([teleportGate0.value, { x, y }])
+          teleportGateState.value = 0
+        }
+      }
+      break
   }
 }
 
@@ -348,6 +357,7 @@ const removeAllAtPosition = (x, y) => {
   if (exitPos.value && exitPos.value.x === x && exitPos.value.y === y) {
     exitPos.value = null
   }
+  teleportGates.value = teleportGates.value.filter(t => !t.some(g => g.x === x && g.y === y))
 }
 
 // 初始化
@@ -466,6 +476,18 @@ initMap()
       var(--teleport-base-color, #4a90e2) 100%);
   animation: rotate 2s linear infinite;
   border-radius: 50%;
+}
+
+.map-cell.teleport-gate-0::after {
+  content: '';
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: url('@/assets/icons/teleport-first.svg') 0 0 no-repeat;
+  background-size: 40px 40px;
 }
 
 .map-cell.start {
