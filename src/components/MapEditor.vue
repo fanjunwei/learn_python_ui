@@ -92,8 +92,8 @@ const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
 // 地图尺寸
-const width = ref(8)
-const height = ref(8)
+const width = ref(4)
+const height = ref(4)
 const currentTool = ref('wall')
 const isDrawing = ref(false)
 
