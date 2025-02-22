@@ -369,23 +369,21 @@ const initThreeJS = async () => {
     if (isTeleporting) {
       teleportProgress += delta
       const t = Math.min(teleportProgress / teleportDuration, 1)
-      
-      if (t <= 0.4) { // 渐隐阶段
-        const fadeOutT = t / 0.4
-        playerModel.position.y = Math.max(0, 0.5 - fadeOutT * 0.5)
+
+      if (t <= 0.5) { // 渐隐阶段
+        const fadeOutT = t / 0.5
+        playerModel.position.y = - fadeOutT * 0.5
         playerModel.traverse((node) => {
           if (node.isMesh) {
             node.material.transparent = true
             node.material.opacity = 1 - fadeOutT
           }
         })
-      } else if (t <= 0.6) { // 等待阶段
-        playerModel.visible = false
       } else if (t < 1) { // 渐现阶段
-        const fadeInT = (t - 0.6) / 0.4
+        const fadeInT = (t - 0.5) / 0.5
         playerModel.visible = true
         playerModel.position.copy(teleportEndPosition)
-        playerModel.position.y = Math.min(0.5, fadeInT * 0.5)
+        playerModel.position.y = fadeInT * 0.5 - 0.5
         playerModel.traverse((node) => {
           if (node.isMesh) {
             node.material.transparent = true
@@ -395,7 +393,7 @@ const initThreeJS = async () => {
       } else { // 传送完成
         isTeleporting = false
         playerModel.position.copy(teleportEndPosition)
-        playerModel.position.y = 0.5
+        playerModel.position.y = 0
         playerModel.traverse((node) => {
           if (node.isMesh) {
             node.material.transparent = false
@@ -438,18 +436,36 @@ const updateScene = () => {
   )
   targetPlayerRotation = -gameState.value.playerDirection * Math.PI / 2 + Math.PI
 
-  // 如果是第一次设置位置，直接设置而不是动画
-  if (gameState.value.action === 'reset') {
+  if (gameState.value.action !== 'teleport') {
+    // 如果是第一次设置位置，直接设置而不是动画
+    if (gameState.value.action === 'reset') {
+      switchAnimation('Idle')
+      currentPlayerPosition.copy(targetPlayerPosition)
+      playerModel.position.copy(targetPlayerPosition)
+      currentPlayerRotation = targetPlayerRotation
+      playerModel.rotation.y = targetPlayerRotation
+    } else {
+      // 开始新的动画
+      currentPlayerPosition.copy(playerModel.position)
+      currentPlayerRotation = playerModel.rotation.y
+      animationProgress = 0
+    }
+  } else {
+    teleportStartPosition.copy(gameState.value.teleportStartPosition)
+    teleportEndPosition.set(
+      gameState.value.playerPosition.x - gameState.value.maze[0].length / 2,
+      0.5,
+      gameState.value.playerPosition.y - gameState.value.maze.length / 2
+    )
+    isTeleporting = true
+    teleportProgress = 0
     switchAnimation('Idle')
-    currentPlayerPosition.copy(targetPlayerPosition)
-    playerModel.position.copy(targetPlayerPosition)
-    currentPlayerRotation = targetPlayerRotation
-    playerModel.rotation.y = targetPlayerRotation
-
+  }
+  if (gameState.value.action === 'reset') {
     // 创建传送门
     teleportGateMeshes.forEach(gate => scene.remove(gate))
     teleportGateMeshes = []
-    
+
     if (gameState.value.teleportGates) {
       gameState.value.teleportGates.forEach((gate, index) => {
         gate.forEach(pos => {
@@ -476,11 +492,6 @@ const updateScene = () => {
         })
       })
     }
-  } else {
-    // 开始新的动画
-    currentPlayerPosition.copy(playerModel.position)
-    currentPlayerRotation = playerModel.rotation.y
-    animationProgress = 0
   }
 
   // 清除旧的物体
@@ -730,17 +741,6 @@ const handleRenderGameState = (event, state) => {
 
 // 监听游戏状态变化
 watch(() => gameState.value, (newState) => {
-  if (newState.action === 'teleport' && !isTeleporting) {
-    teleportStartPosition.copy(playerModel.position)
-    teleportEndPosition.set(
-      newState.playerPosition.x - newState.maze[0].length / 2,
-      0.5,
-      newState.playerPosition.y - newState.maze.length / 2
-    )
-    isTeleporting = true
-    teleportProgress = 0
-    switchAnimation('Jump')
-  }
   updateScene()
 }, { deep: true })
 

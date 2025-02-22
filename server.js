@@ -414,12 +414,13 @@ function checkCollisions(result, operate) {
     })
   })
   if (teleportGate) {
-    let timeout = 200;
+    let timeout = 2000;
     timeout = timeout * (100 - speed) / 100;
     gameState.onTeleport = true;
     setTimeout(() => {
       if (teleportGate) {
         gameState.onTeleport = false;
+        gameState.teleportStartPosition = gameState.playerPosition;
         gameState.playerPosition = teleportGate;
         gameState.action = 'teleport';
         mainWindow.webContents.send('playAudio', 'teleport');
