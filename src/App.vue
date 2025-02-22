@@ -57,7 +57,7 @@ const ipcRenderer = electron.ipcRenderer
 const currentView = ref('game3d')
 const speed = ref(0)
 // 背景音乐
-const bgm = ref(new Audio(new URL('@/assets/audio/bgm.mp3', import.meta.url).href))
+const bgm = ref(new Audio(new URL('@/assets/audio/bgm2.mp3', import.meta.url).href))
 bgm.value.loop = true
 const getGemAudio = ref(new Audio(new URL('@/assets/audio/get_gem.mp3', import.meta.url).href))
 const getMonsterAudio = ref(new Audio(new URL('@/assets/audio/get_monster.mp3', import.meta.url).href))
