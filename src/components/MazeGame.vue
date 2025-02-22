@@ -218,28 +218,13 @@ const handleRenderGameState = (event, state) => {
 onMounted(async () => {
   console.log('组件已挂载')
   ipcRenderer.on('renderGameState', handleRenderGameState)
-  ipcRenderer.on('showToast', handleShowToast)
-
   // 初始化游戏
   await initGame()
-
-  // 获取当前游戏状态
-  try {
-    const response = await fetch('http://localhost:3000/getGameState')
-    const data = await response.json()
-    console.log('获取游戏状态响应:', data)
-    if (data.success) {
-      gameState.value = data.gameState
-    }
-  } catch (error) {
-    console.error('获取游戏状态失败:', error)
-  }
 })
 
 // 清理事件监听
 onUnmounted(() => {
   ipcRenderer.removeListener('renderGameState', handleRenderGameState)
-  ipcRenderer.removeListener('showToast', handleShowToast)
   // 停止背景音乐
   bgm.value.pause()
   bgm.value.currentTime = 0

@@ -82,7 +82,7 @@ const gameState = ref({
   success: false,
   onGemType: 'none',
   autoCollect: false,
-  action: null
+  action: 'reset'
 })
 
 // Three.js 相关变量
@@ -360,7 +360,11 @@ const initThreeJS = async () => {
 
 // 更新场景
 const updateScene = () => {
-  if (!init || !playerModel) return
+  console.log('3D更新场景')
+  if (!init || !playerModel) {
+    console.log('skip 3D更新场景')
+    return
+  }
   playerModel.traverse((node) => {
     if (node.isMesh) {
       node.material.transparent = true
@@ -652,22 +656,10 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
   // 初始化Three.js
-  initThreeJS()
+  await initThreeJS()
 
   // 初始化游戏
   await initGame()
-
-  // 获取当前游戏状态
-  try {
-    const response = await fetch('http://localhost:3000/getGameState')
-    const data = await response.json()
-    console.log('获取游戏状态响应:', data)
-    if (data.success) {
-      gameState.value = data.gameState
-    }
-  } catch (error) {
-    console.error('获取游戏状态失败:', error)
-  }
 })
 
 // 组件卸载
