@@ -82,13 +82,14 @@ const gameState = ref({
   success: false,
   onGemType: 'none',
   autoCollect: false,
-  action: 'reset'
+  action: 'reset',
+  teleportGates: []
 })
 
 // Three.js 相关变量
 const container = ref(null)
 let scene, camera, renderer, controls
-let playerModel, playerMixer, playerAnimations = {}, monsterModel, monsterMixer, monsterAnimations = {}, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh
+let playerModel, playerMixer, playerAnimations = {}, monsterModel, monsterMixer, monsterAnimations = {}, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh, teleportGateMeshes = []
 let init = false
 let clock = null
 let targetPlayerPosition = new THREE.Vector3()
@@ -99,6 +100,11 @@ let animationProgress = 0
 const playerFadeOutDuration = 1.0
 let playerFadeOutProgress = playerFadeOutDuration
 let currentAnimation = null
+let isTeleporting = false
+let teleportStartPosition = new THREE.Vector3()
+let teleportEndPosition = new THREE.Vector3()
+let teleportProgress = 0
+const teleportDuration = 2.0
 
 // 加载GLB模型
 const loadPlayerModel = async () => {
@@ -352,6 +358,53 @@ const initThreeJS = async () => {
       }
       gem.position.y = y + Math.sin(time * 2 + index + Math.PI) * 0.1
     })
+
+    // 更新传送门动画
+    teleportGateMeshes.forEach((gate, index) => {
+      gate.rotation.y = time * 2
+      gate.scale.y = 1 + Math.sin(time * 4) * 0.1
+    })
+
+    // 处理传送动画
+    if (isTeleporting) {
+      teleportProgress += delta
+      const t = Math.min(teleportProgress / teleportDuration, 1)
+      
+      if (t <= 0.4) { // 渐隐阶段
+        const fadeOutT = t / 0.4
+        playerModel.position.y = Math.max(0, 0.5 - fadeOutT * 0.5)
+        playerModel.traverse((node) => {
+          if (node.isMesh) {
+            node.material.transparent = true
+            node.material.opacity = 1 - fadeOutT
+          }
+        })
+      } else if (t <= 0.6) { // 等待阶段
+        playerModel.visible = false
+      } else if (t < 1) { // 渐现阶段
+        const fadeInT = (t - 0.6) / 0.4
+        playerModel.visible = true
+        playerModel.position.copy(teleportEndPosition)
+        playerModel.position.y = Math.min(0.5, fadeInT * 0.5)
+        playerModel.traverse((node) => {
+          if (node.isMesh) {
+            node.material.transparent = true
+            node.material.opacity = fadeInT
+          }
+        })
+      } else { // 传送完成
+        isTeleporting = false
+        playerModel.position.copy(teleportEndPosition)
+        playerModel.position.y = 0.5
+        playerModel.traverse((node) => {
+          if (node.isMesh) {
+            node.material.transparent = false
+            node.material.opacity = 1
+          }
+        })
+      }
+    }
+
     renderer.render(scene, camera)
   }
   animate()
@@ -392,6 +445,37 @@ const updateScene = () => {
     playerModel.position.copy(targetPlayerPosition)
     currentPlayerRotation = targetPlayerRotation
     playerModel.rotation.y = targetPlayerRotation
+
+    // 创建传送门
+    teleportGateMeshes.forEach(gate => scene.remove(gate))
+    teleportGateMeshes = []
+    
+    if (gameState.value.teleportGates) {
+      gameState.value.teleportGates.forEach((gate, index) => {
+        gate.forEach(pos => {
+          const geometry = new THREE.CylinderGeometry(0.3, 0.3, 1, 32)
+          const color = new THREE.Color().setHSL(index * 0.1, 0.7, 0.5)
+          const material = new THREE.MeshPhysicalMaterial({
+            color: color,
+            metalness: 0.9,
+            roughness: 0.1,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide,
+            emissive: color,
+            emissiveIntensity: 0.5
+          })
+          const teleportMesh = new THREE.Mesh(geometry, material)
+          teleportMesh.position.set(
+            pos.x - gameState.value.maze[0].length / 2,
+            0.5,
+            pos.y - gameState.value.maze.length / 2
+          )
+          scene.add(teleportMesh)
+          teleportGateMeshes.push(teleportMesh)
+        })
+      })
+    }
   } else {
     // 开始新的动画
     currentPlayerPosition.copy(playerModel.position)
@@ -645,7 +729,18 @@ const handleRenderGameState = (event, state) => {
 }
 
 // 监听游戏状态变化
-watch(() => gameState.value, () => {
+watch(() => gameState.value, (newState) => {
+  if (newState.action === 'teleport' && !isTeleporting) {
+    teleportStartPosition.copy(playerModel.position)
+    teleportEndPosition.set(
+      newState.playerPosition.x - newState.maze[0].length / 2,
+      0.5,
+      newState.playerPosition.y - newState.maze.length / 2
+    )
+    isTeleporting = true
+    teleportProgress = 0
+    switchAnimation('Jump')
+  }
   updateScene()
 }, { deep: true })
 
