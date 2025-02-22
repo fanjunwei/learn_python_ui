@@ -63,6 +63,7 @@ const getGemAudio = ref(new Audio(new URL('@/assets/audio/get_gem.mp3', import.m
 const getMonsterAudio = ref(new Audio(new URL('@/assets/audio/get_monster.mp3', import.meta.url).href))
 const completeAudio = ref(new Audio(new URL('@/assets/audio/complete.mp3', import.meta.url).href))
 const errorAudio = ref(new Audio(new URL('@/assets/audio/error.mp3', import.meta.url).href))
+const teleportAudio = ref(new Audio(new URL('@/assets/audio/teleport.mp3', import.meta.url).href))
 // 淡出背景音乐
 const fadeOutBgm = () => {
   const fadeOutInterval = 50 // 每50毫秒调整一次音量
@@ -171,6 +172,11 @@ const handlePlayAudio = (event, audioType) => {
       errorAudio.value.pause()
     }
     errorAudio.value.play()
+  } else if (audioType === 'teleport') {
+    if (teleportAudio.value.played) {
+      teleportAudio.value.pause()
+    }
+    teleportAudio.value.play()
   } else if (audioType === 'play_bgm') {
     if (bgm.value.paused) {
       bgm.value.volume = isMuted.value ? 0 : 1

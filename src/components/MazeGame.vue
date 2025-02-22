@@ -138,19 +138,23 @@ const isExit = (x, y) => {
 }
 
 const isTeleportGate = (x, y) => {
-  return gameState.value.teleportGates.some(t => t.some(g => g.x === x && g.y === y))
+  if (gameState.value.teleportGates) {
+    return gameState.value.teleportGates.some(t => t.some(g => g.x === x && g.y === y))
+  }
+  return false
 }
 
 const teleportGateStyle = (x, y) => {
-  const index = gameState.value.teleportGates.findIndex(t => t.some(g => g.x === x && g.y === y))
-  if (index !== -1) {
-    let color = index * 50 % 360
-    return {
-      '--teleport-base-color': `hsl(${color}, 70%, 50%)`
+  if (gameState.value.teleportGates) {
+    const index = gameState.value.teleportGates.findIndex(t => t.some(g => g.x === x && g.y === y))
+    if (index !== -1) {
+      let color = index * 50 % 360
+      return {
+        '--teleport-base-color': `hsl(${color}, 70%, 50%)`
+      }
     }
-  } else {
-    return {}
   }
+  return {}
 }
 
 // 游戏操作
@@ -448,14 +452,12 @@ onUnmounted(() => {
   position: absolute;
   width: 40px;
   height: 40px;
-  background: conic-gradient(
-    from 0deg,
-    var(--teleport-base-color, #4a90e2) 0%,
-    color-mix(in srgb, var(--teleport-base-color, #4a90e2) 80%, white) 25%,
-    var(--teleport-base-color, #4a90e2) 50%,
-    color-mix(in srgb, var(--teleport-base-color, #4a90e2) 80%, white) 75%,
-    var(--teleport-base-color, #4a90e2) 100%
-  );
+  background: conic-gradient(from 0deg,
+      var(--teleport-base-color, #4a90e2) 0%,
+      color-mix(in srgb, var(--teleport-base-color, #4a90e2) 80%, white) 25%,
+      var(--teleport-base-color, #4a90e2) 50%,
+      color-mix(in srgb, var(--teleport-base-color, #4a90e2) 80%, white) 75%,
+      var(--teleport-base-color, #4a90e2) 100%);
   animation: rotate 2s linear infinite;
   border-radius: 50%;
 }
@@ -464,6 +466,7 @@ onUnmounted(() => {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }

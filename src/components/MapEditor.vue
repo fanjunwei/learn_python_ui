@@ -142,7 +142,7 @@ const saveMap = async () => {
     blueGems: blueGems.value.map(gem => ({ x: gem.x, y: gem.y })),
     redGems: redGems.value.map(gem => ({ x: gem.x, y: gem.y })),
     monsters: monsters.value.map(monster => ({ x: monster.x, y: monster.y })),
-    teleportGates,
+    teleportGates: teleportGates.value.map(gate => ([{ x: gate[0].x, y: gate[0].y }, { x: gate[1].x, y: gate[1].y }])),
     exit: {
       x: exitPos.value.x,
       y: exitPos.value.y
