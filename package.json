@@ -25,6 +25,7 @@
     "electron": "^28.3.3",
     "element-plus": "^2.9.4",
     "express": "^4.21.2",
+    "gsap": "^3.12.5",
     "node-fetch": "^2.7.0",
     "socket.io": "^4.8.1",
     "three": "^0.173.0",

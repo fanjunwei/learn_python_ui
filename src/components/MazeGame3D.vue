@@ -64,6 +64,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils'
+import gsap from 'gsap'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -814,9 +815,39 @@ const initGame = async () => {
 
 // 事件处理函数
 const handleRenderGameState = (event, state) => {
-  console.log('3D收到游戏状态更新:', state)
-  gameState.value = state
-  updateScene()
+  console.log('收到游戏状态更新:', state)
+  if (state && state.maze) {
+    console.log('迷宫数据:', state.maze)
+    const oldLevel = gameState.value.currentLevel
+    gameState.value = state
+    
+    // 当层级变化时，更新相机位置
+    if (state.action === 'teleport' && oldLevel !== state.currentLevel) {
+      const targetY = state.currentLevel * LEVEL_HEIGHT
+      const cameraHeight = 8 // 相机高度偏移
+      
+      // 使用GSAP创建平滑动画
+      gsap.to(camera.position, {
+        y: targetY + cameraHeight,
+        duration: 2,
+        ease: "power2.inOut"
+      })
+      
+      gsap.to(controls.target, {
+        y: targetY,
+        duration: 2,
+        ease: "power2.inOut",
+        onUpdate: () => {
+          controls.update()
+        },
+        onComplete: () => {
+        }
+      })
+    } 
+    updateScene()
+  } else {
+    console.warn('收到无效的游戏状态:', state)
+  }
 }
 
 // 组件挂载
