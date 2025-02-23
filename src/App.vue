@@ -196,13 +196,27 @@ const loadMap = async () => {
     const result = await ipcRenderer.invoke('load-map')
     if (result.success) {
       const config = result.data
-      config.maze = config.maze.map(row => row.map(cell => ({ walkable: cell })))
-      resetGame(config)
+      
+      // 验证多层迷宫配置
+      if (!config.levels || !Array.isArray(config.levels)) {
+        throw new Error('无效的地图配置：缺少层级数据')
+      }
+
+      // 确保每个层级的迷宫数据都是有效的
+      config.levels = config.levels.map(level => ({
+        ...level,
+        maze: level.maze.map(row => 
+          Array.isArray(row) ? row.map(cell => ({ walkable: !!cell })) : []
+        ),
+      }))
+      // 重置游戏状态
+      await resetGame(config)
       ElMessage.success('地图加载成功！')
     } else if (result.message) {
       ElMessage.error('加载失败：' + result.message)
     }
   } catch (error) {
+    console.error('加载地图错误:', error)
     ElMessage.error('加载失败：' + error.message)
   }
 }
