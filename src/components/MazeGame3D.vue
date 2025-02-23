@@ -431,6 +431,24 @@ const updateScene = () => {
     console.log('skip 3D更新场景')
     return
   }
+
+  // 清理对象的通用函数
+  const disposeObject = (obj) => {
+    if (obj.geometry) {
+      obj.geometry.dispose()
+    }
+    if (obj.material) {
+      if (Array.isArray(obj.material)) {
+        obj.material.forEach(material => material.dispose())
+      } else {
+        obj.material.dispose()
+      }
+    }
+    if (obj.children) {
+      obj.children.forEach(child => disposeObject(child))
+    }
+  }
+
   playerModel.traverse((node) => {
     if (node.isMesh) {
       node.material.transparent = true
@@ -476,9 +494,13 @@ const updateScene = () => {
     teleportProgress = 0
     switchAnimation('Idle')
   }
+
   if (gameState.value.action === 'reset') {
-    // 创建传送门
-    teleportGateMeshes.forEach(gate => scene.remove(gate))
+    // 清理并创建传送门
+    teleportGateMeshes.forEach(gate => {
+      disposeObject(gate)
+      scene.remove(gate)
+    })
     teleportGateMeshes = []
 
     if (gameState.value.teleportGates && teleportGateModel) {
@@ -518,9 +540,15 @@ const updateScene = () => {
     }
   }
 
-  // 清除旧的物体
-  walls.forEach(wall => scene.remove(wall))
-  if (exitMesh) scene.remove(exitMesh)
+  // 清理旧的物体
+  walls.forEach(wall => {
+    disposeObject(wall)
+    scene.remove(wall)
+  })
+  if (exitMesh) {
+    disposeObject(exitMesh)
+    scene.remove(exitMesh)
+  }
 
   walls = []
 
@@ -551,7 +579,10 @@ const updateScene = () => {
   // 创建宝石
   if (gameState.value.action === 'reset' || gameState.value.action === 'collect_blue') {
     const createBlueGem = () => {
-      blueGemMeshes.forEach(gem => scene.remove(gem))
+      blueGemMeshes.forEach(gem => {
+        disposeObject(gem)
+        scene.remove(gem)
+      })
       blueGemMeshes = []
       const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
       const blueGemMaterial = new THREE.MeshPhysicalMaterial({
@@ -585,7 +616,10 @@ const updateScene = () => {
   }
   if (gameState.value.action === 'reset' || gameState.value.action === 'collect_red') {
     const createRedGem = () => {
-      redGemMeshes.forEach(gem => scene.remove(gem))
+      redGemMeshes.forEach(gem => {
+        disposeObject(gem)
+        scene.remove(gem)
+      })
       redGemMeshes = []
       const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
       const redGemMaterial = new THREE.MeshPhysicalMaterial({
@@ -618,7 +652,14 @@ const updateScene = () => {
     }
   }
   if (gameState.value.action === 'reset') {
-    monsterMeshes.forEach(monster => scene.remove(monster))
+    monsterMeshes.forEach(monster => {
+      if (monster.userData.mixer) {
+        monster.userData.mixer.stopAllAction()
+        monster.userData.mixer.uncacheRoot(monster)
+      }
+      disposeObject(monster)
+      scene.remove(monster)
+    })
     monsterMeshes = []
     // 创建怪物
     gameState.value.monsters.forEach((monster, index) => {
@@ -636,8 +677,6 @@ const updateScene = () => {
         newMonsterModel.rotation.y = (monster.x + monster.y) * Math.PI * 0.2
 
         // 为每个怪物创建独立的动画混合器
-
-        // 为每个怪物创建独立的动画混合器
         const mixer = new THREE.AnimationMixer(newMonsterModel)
         newMonsterModel.userData.mixer = mixer
 
@@ -647,7 +686,7 @@ const updateScene = () => {
           const action = mixer.clipAction(clip)
           if (name === 'Idle') {
             // 为每个怪物错开动画播放时间
-            action.time = index * 2 // 每个怪物错开0.5秒播放
+            action.time = index * 2 // 每个怪物错开2秒播放
             action.play()
           }
         })
@@ -783,17 +822,123 @@ onMounted(async () => {
 
 // 组件卸载
 onUnmounted(() => {
+  console.log('清理3D资源...')
   ipcRenderer.removeListener('renderGameState', handleRenderGameState)
   window.removeEventListener('resize', handleResize)
 
-  // 清理Three.js资源
+  // 清理动画混合器
+  if (playerMixer) {
+    playerMixer.stopAllAction()
+    playerMixer.uncacheRoot(playerModel)
+  }
+
+  // 清理所有怪物的动画混合器
+  monsterMeshes.forEach(monster => {
+    if (monster.userData.mixer) {
+      monster.userData.mixer.stopAllAction()
+      monster.userData.mixer.uncacheRoot(monster)
+    }
+  })
+
+  // 清理所有材质和几何体
+  const disposeObject = (obj) => {
+    if (obj.geometry) {
+      obj.geometry.dispose()
+    }
+    if (obj.material) {
+      if (Array.isArray(obj.material)) {
+        obj.material.forEach(material => material.dispose())
+      } else {
+        obj.material.dispose()
+      }
+    }
+    if (obj.children) {
+      obj.children.forEach(child => disposeObject(child))
+    }
+  }
+
+  // 清理场景中的所有对象
+  if (scene) {
+    scene.traverse(disposeObject)
+    scene.clear()
+  }
+
+  // 清理墙壁
+  walls.forEach(wall => disposeObject(wall))
+  walls = []
+
+  // 清理宝石
+  blueGemMeshes.forEach(gem => disposeObject(gem))
+  redGemMeshes.forEach(gem => disposeObject(gem))
+  blueGemMeshes = []
+  redGemMeshes = []
+
+  // 清理怪物
+  monsterMeshes.forEach(monster => disposeObject(monster))
+  monsterMeshes = []
+
+  // 清理传送门
+  teleportGateMeshes.forEach(gate => disposeObject(gate))
+  teleportGateMeshes = []
+
+  // 清理出口
+  if (exitMesh) {
+    disposeObject(exitMesh)
+    exitMesh = null
+  }
+
+  // 清理模型
+  if (playerModel) {
+    disposeObject(playerModel)
+    playerModel = null
+  }
+  if (monsterModel) {
+    disposeObject(monsterModel)
+    monsterModel = null
+  }
+  if (teleportGateModel) {
+    disposeObject(teleportGateModel)
+    teleportGateModel = null
+  }
+
+  // 清理渲染器
   if (renderer) {
     renderer.dispose()
-    container.value?.removeChild(renderer.domElement)
+    renderer.forceContextLoss()
+    renderer.domElement.remove()
+    renderer = null
   }
+
+  // 清理控制器
   if (controls) {
     controls.dispose()
+    controls = null
   }
+
+  // 清理相机
+  if (camera) {
+    camera = null
+  }
+
+  // 清理场景
+  if (scene) {
+    scene = null
+  }
+
+  // 清理时钟
+  if (clock) {
+    clock = null
+  }
+
+  // 重置所有动画相关变量
+  init = false
+  animationProgress = 0
+  playerFadeOutProgress = playerFadeOutDuration
+  currentAnimation = null
+  isTeleporting = false
+  teleportProgress = 0
+
+  console.log('3D资源清理完成')
 })
 </script>
 

@@ -285,7 +285,11 @@ function resetGameState(config) {
   gameState.autoCollect = !!config.autoCollect;
   gameState.collectedBlueGems = 0;
   gameState.collectedRedGems = 0;
-  gameState.exitOpen = false;
+  if (gameState.requiredBlueGems > 0 || gameState.requiredRedGems > 0) {
+    gameState.exitOpen = false;
+  } else {
+    gameState.exitOpen = true;
+  }
   gameState.playerDirection = 0;
   gameState.gameOver = false;
   gameState.success = false;
