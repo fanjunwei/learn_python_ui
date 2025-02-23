@@ -1,7 +1,6 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http);
 const fs = require('fs').promises;
 const path = require('path');
 let mainWindow;
