@@ -485,21 +485,18 @@ const updateScene = () => {
       gameState.value.teleportGates.forEach((gate, index) => {
         gate.forEach(pos => {
           const gateModel = SkeletonUtils.clone(teleportGateModel)
-          // 使用更鲜艳的颜色，增加饱和度和亮度
-          const color = new THREE.Color().setHSL(index * 0.3, 1.0, 0.6)
+          // 使用与2D视图相同的颜色生成算法
+          const hue = (index * 50) % 360
+          const color = new THREE.Color().setHSL(hue / 360, 0.7, 0.5)
           
           // 为模型的所有材质设置颜色
           gateModel.traverse((node) => {
             if (node.isMesh) {
               node.material = node.material.clone() // 克隆材质以避免共享
-              // 保持原始纹理，但增强发光效果
+              node.material.color = color
               node.material.emissive = color
               node.material.emissiveIntensity = 2.0
-              // 添加环境光遮蔽贴图的强度
-              if (node.material.aoMapIntensity !== undefined) {
-                node.material.aoMapIntensity = 0.5
-              }
-              // 调整金属度和粗糙度以增强视觉效果
+              // 调整材质参数以增强视觉效果
               if (node.material.metalness !== undefined) {
                 node.material.metalness = 0.8
               }
