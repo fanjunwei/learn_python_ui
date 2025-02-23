@@ -368,17 +368,17 @@ const initThreeJS = async () => {
     blueGemMeshes.forEach((gem, index) => {
 
       let distance = Math.sqrt(Math.pow(gem.position.x - playerModel.position.x, 2) + Math.pow(gem.position.z - playerModel.position.z, 2))
-      let y = 0.5
-      if (distance < 1) {
-        y = 0.5 + (1 - distance) * 0.7
+      let y = gem.userData.position.y
+      if (distance < 1 && gem.userData.level === gameState.value.currentLevel) {
+        y = y + (1 - distance) * 0.7
       }
       gem.position.y = y + Math.sin(time * 2 + index) * 0.1
     })
     redGemMeshes.forEach((gem, index) => {
       let distance = Math.sqrt(Math.pow(gem.position.x - playerModel.position.x, 2) + Math.pow(gem.position.z - playerModel.position.z, 2))
-      let y = 0.5
-      if (distance < 1) {
-        y = 0.5 + (1 - distance) * 0.7
+      let y = gem.userData.position.y
+      if (distance < 1 && gem.userData.level === gameState.value.currentLevel) {
+        y = y + (1 - distance) * 0.7
       }
       gem.position.y = y + Math.sin(time * 2 + index + Math.PI) * 0.1
     })
@@ -512,7 +512,7 @@ const updateScene = () => {
 
   if (gameState.value.action === 'reset') {
     // 清理并重建所有层级的场景对象
-    
+
     // 清理传送门
     teleportGateMeshes.forEach(gate => {
       disposeObject(gate)
@@ -594,66 +594,6 @@ const updateScene = () => {
       })
     })
 
-    // 清理并重建宝石
-    blueGemMeshes.forEach(gem => {
-      disposeObject(gem)
-      scene.remove(gem)
-    })
-    redGemMeshes.forEach(gem => {
-      disposeObject(gem)
-      scene.remove(gem)
-    })
-    blueGemMeshes = []
-    redGemMeshes = []
-
-    // 创建宝石
-    const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
-    const blueGemMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x0000ff,
-      metalness: 0.9,
-      roughness: 0.1,
-      envMapIntensity: 1.5,
-      emissive: 0x0000ff,
-      emissiveIntensity: 0.2,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.1
-    })
-    const redGemMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xff0000,
-      metalness: 0.9,
-      roughness: 0.1,
-      envMapIntensity: 1.5,
-      emissive: 0xff0000,
-      emissiveIntensity: 0.2,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.1
-    })
-
-    // 在每一层放置宝石
-    gameState.value.levels.forEach((level, levelIndex) => {
-      const levelY = levelIndex * LEVEL_HEIGHT
-      level.blueGems.forEach(gem => {
-        const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
-        blueMesh.position.set(
-          gem.x - level.maze[0].length / 2,
-          levelY + 0.5,
-          gem.y - level.maze.length / 2
-        )
-        scene.add(blueMesh)
-        blueGemMeshes.push(blueMesh)
-      })
-
-      level.redGems.forEach(gem => {
-        const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
-        redMesh.position.set(
-          gem.x - level.maze[0].length / 2,
-          levelY + 0.5,
-          gem.y - level.maze.length / 2
-        )
-        scene.add(redMesh)
-        redGemMeshes.push(redMesh)
-      })
-    })
 
     // 清理并重建怪物
     monsterMeshes.forEach(monster => {
@@ -667,35 +607,32 @@ const updateScene = () => {
     monsterMeshes = []
 
     // 在每一层放置怪物
-    gameState.value.levels.forEach((level, levelIndex) => {
-      const levelY = levelIndex * LEVEL_HEIGHT
-      level.monsters.forEach((monster, index) => {
-        if (monsterModel) {
-          const newMonsterModel = SkeletonUtils.clone(monsterModel)
-          newMonsterModel.scale.copy(monsterModel.scale)
-          newMonsterModel.position.set(
-            monster.x - level.maze[0].length / 2,
-            levelY,
-            monster.y - level.maze.length / 2
-          )
-          newMonsterModel.rotation.y = (monster.x + monster.y) * Math.PI * 0.2
+    gameState.value.monsters.forEach((monster) => {
+      if (monsterModel) {
+        const newMonsterModel = SkeletonUtils.clone(monsterModel)
+        newMonsterModel.scale.copy(monsterModel.scale)
+        newMonsterModel.position.set(
+          monster.x - gameState.value.maze[0].length / 2,
+          monster.level * LEVEL_HEIGHT,
+          monster.y - gameState.value.maze.length / 2
+        )
+        newMonsterModel.rotation.y = (monster.x + monster.y) * Math.PI * 0.2
 
-          const mixer = new THREE.AnimationMixer(newMonsterModel)
-          newMonsterModel.userData.mixer = mixer
+        const mixer = new THREE.AnimationMixer(newMonsterModel)
+        newMonsterModel.userData.mixer = mixer
 
-          Object.entries(monsterAnimations).forEach(([name, originalAction]) => {
-            const clip = originalAction.getClip()
-            const action = mixer.clipAction(clip)
-            if (name === 'Idle') {
-              action.time = index * 2
-              action.play()
-            }
-          })
+        Object.entries(monsterAnimations).forEach(([name, originalAction]) => {
+          const clip = originalAction.getClip()
+          const action = mixer.clipAction(clip)
+          if (name === 'Idle') {
+            action.time = monster.level * 2
+            action.play()
+          }
+        })
 
-          scene.add(newMonsterModel)
-          monsterMeshes.push(newMonsterModel)
-        }
-      })
+        scene.add(newMonsterModel)
+        monsterMeshes.push(newMonsterModel)
+      }
     })
 
     // 创建出口
@@ -732,6 +669,69 @@ const updateScene = () => {
     controls.target.set(0, totalHeight / 2, 0)
     controls.update()
   }
+    // 清理并重建宝石
+    blueGemMeshes.forEach(gem => {
+      disposeObject(gem)
+      scene.remove(gem)
+    })
+    redGemMeshes.forEach(gem => {
+      disposeObject(gem)
+      scene.remove(gem)
+    })
+    blueGemMeshes = []
+    redGemMeshes = []
+
+    // 创建宝石
+    const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
+    const blueGemMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x0000ff,
+      metalness: 0.9,
+      roughness: 0.1,
+      envMapIntensity: 1.5,
+      emissive: 0x0000ff,
+      emissiveIntensity: 0.2,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1
+    })
+    const redGemMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xff0000,
+      metalness: 0.9,
+      roughness: 0.1,
+      envMapIntensity: 1.5,
+      emissive: 0xff0000,
+      emissiveIntensity: 0.2,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1
+    })
+
+    // 放置宝石
+    gameState.value.blueGems.forEach((gem) => {
+      const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
+      let blueGemPosition = {
+        x: gem.x - gameState.value.maze[0].length / 2,
+        y: gem.level * LEVEL_HEIGHT + 0.5,
+        z: gem.y - gameState.value.maze.length / 2
+      }
+      blueMesh.userData.position = blueGemPosition
+      blueMesh.userData.level = gem.level
+      blueMesh.position.copy(blueGemPosition)
+      scene.add(blueMesh)
+      blueGemMeshes.push(blueMesh)
+    })
+
+    gameState.value.redGems.forEach(gem => {
+      const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
+      let redGemPosition = {
+        x: gem.x - gameState.value.maze[0].length / 2,
+        y: gem.level * LEVEL_HEIGHT + 0.5,
+        z: gem.y - gameState.value.maze.length / 2
+      }
+      redMesh.userData.position = redGemPosition
+      redMesh.userData.level = gem.level
+      redMesh.position.copy(redGemPosition)
+      scene.add(redMesh)
+      redGemMeshes.push(redMesh)
+    })
 }
 
 // 监听窗口大小变化
@@ -812,19 +812,19 @@ const handleRenderGameState = (event, state) => {
     console.log('迷宫数据:', state.maze)
     const oldLevel = gameState.value.currentLevel
     gameState.value = state
-    
+
     // 当层级变化时，更新相机位置
     if (oldLevel !== state.currentLevel) {
       const targetY = state.currentLevel * LEVEL_HEIGHT
       const cameraHeight = 8 // 相机高度偏移
-      
+
       // 使用GSAP创建平滑动画
       gsap.to(camera.position, {
         y: targetY + cameraHeight,
         duration: 2,
         ease: "power2.inOut"
       })
-      
+
       gsap.to(controls.target, {
         y: targetY,
         duration: 2,
@@ -835,7 +835,7 @@ const handleRenderGameState = (event, state) => {
         onComplete: () => {
         }
       })
-    } 
+    }
     updateScene()
   } else {
     console.warn('收到无效的游戏状态:', state)

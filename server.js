@@ -288,7 +288,7 @@ app.post('/move', async (req, res) => {
 
 // 重置游戏状态
 function resetGameState(config) {
-  gameState.levels = JSON.parse(JSON.stringify(config.levels));
+  gameState.levels = []
   gameState.playerPosition = { ...config.start };
   gameState.currentLevel = config.start.level;
   
@@ -298,10 +298,15 @@ function resetGameState(config) {
   gameState.monsters = [];
   
   config.levels.forEach((level, index) => {
+    let levelData = {
+      maze: level.maze,
+    }
+    gameState.levels.push(levelData)
     gameState.blueGems.push(...level.blueGems.map(gem => ({ ...gem, level: index })));
     gameState.redGems.push(...level.redGems.map(gem => ({ ...gem, level: index })));
     gameState.monsters.push(...level.monsters.map(monster => ({ ...monster, level: index })));
   });
+
   
   gameState.exit = { ...config.exit };
   gameState.teleportGates = config.teleportGates || [];
