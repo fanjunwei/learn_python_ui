@@ -89,7 +89,7 @@ const gameState = ref({
 // Three.js 相关变量
 const container = ref(null)
 let scene, camera, renderer, controls
-let playerModel, playerMixer, playerAnimations = {}, monsterModel, monsterMixer, monsterAnimations = {}, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh, teleportGateMeshes = []
+let playerModel, playerMixer, playerAnimations = {}, monsterModel, monsterMixer, monsterAnimations = {}, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh, teleportGateMeshes = [], teleportGateModel = null
 let init = false
 let clock = null
 let targetPlayerPosition = new THREE.Vector3()
@@ -186,6 +186,20 @@ const loadMonsterModel = async () => {
   }
 }
 
+// 加载传送门模型
+const loadTeleportGateModel = async () => {
+  const loader = new GLTFLoader()
+  try {
+    const gltf = await loader.loadAsync(new URL('@/assets/3d_model/传送门.glb', import.meta.url).href)
+    teleportGateModel = gltf.scene
+    teleportGateModel.scale.set(0.5, 0.5, 0.5)
+    return teleportGateModel
+  } catch (error) {
+    console.error('加载传送门模型失败:', error)
+    return null
+  }
+}
+
 // 切换动画
 const switchAnimation = (newAnimation) => {
   if (!playerMixer || !playerAnimations[newAnimation] || currentAnimation === newAnimation) return
@@ -256,6 +270,8 @@ const initThreeJS = async () => {
   await loadPlayerModel()
   // 加载怪物模型
   await loadMonsterModel()
+  // 加载传送门模型
+  await loadTeleportGateModel()
 
   scene.add(playerModel)
 
@@ -361,8 +377,7 @@ const initThreeJS = async () => {
 
     // 更新传送门动画
     teleportGateMeshes.forEach((gate, index) => {
-      gate.rotation.y = time * 2
-      gate.scale.y = 1 + Math.sin(time * 4) * 0.1
+      gate.rotation.y = time
     })
 
     // 处理传送动画
@@ -466,29 +481,41 @@ const updateScene = () => {
     teleportGateMeshes.forEach(gate => scene.remove(gate))
     teleportGateMeshes = []
 
-    if (gameState.value.teleportGates) {
+    if (gameState.value.teleportGates && teleportGateModel) {
       gameState.value.teleportGates.forEach((gate, index) => {
         gate.forEach(pos => {
-          const geometry = new THREE.CylinderGeometry(0.3, 0.3, 1, 32)
-          const color = new THREE.Color().setHSL(index * 0.1, 0.7, 0.5)
-          const material = new THREE.MeshPhysicalMaterial({
-            color: color,
-            metalness: 0.9,
-            roughness: 0.1,
-            transparent: true,
-            opacity: 0.8,
-            side: THREE.DoubleSide,
-            emissive: color,
-            emissiveIntensity: 0.5
+          const gateModel = SkeletonUtils.clone(teleportGateModel)
+          // 使用更鲜艳的颜色，增加饱和度和亮度
+          const color = new THREE.Color().setHSL(index * 0.3, 1.0, 0.6)
+          
+          // 为模型的所有材质设置颜色
+          gateModel.traverse((node) => {
+            if (node.isMesh) {
+              node.material = node.material.clone() // 克隆材质以避免共享
+              // 保持原始纹理，但增强发光效果
+              node.material.emissive = color
+              node.material.emissiveIntensity = 2.0
+              // 添加环境光遮蔽贴图的强度
+              if (node.material.aoMapIntensity !== undefined) {
+                node.material.aoMapIntensity = 0.5
+              }
+              // 调整金属度和粗糙度以增强视觉效果
+              if (node.material.metalness !== undefined) {
+                node.material.metalness = 0.8
+              }
+              if (node.material.roughness !== undefined) {
+                node.material.roughness = 0.2
+              }
+            }
           })
-          const teleportMesh = new THREE.Mesh(geometry, material)
-          teleportMesh.position.set(
+
+          gateModel.position.set(
             pos.x - gameState.value.maze[0].length / 2,
-            0.5,
+            0,
             pos.y - gameState.value.maze.length / 2
           )
-          scene.add(teleportMesh)
-          teleportGateMeshes.push(teleportMesh)
+          scene.add(gateModel)
+          teleportGateMeshes.push(gateModel)
         })
       })
     }
