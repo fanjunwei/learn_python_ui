@@ -12,27 +12,32 @@
             </el-form-item>
           </el-form>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="7">
           <div class="level-controls">
             <el-button-group>
               <el-button @click="addLevel" type="primary" plain>
-                <el-icon><Plus /></el-icon>
+                <el-icon>
+                  <Plus />
+                </el-icon>
                 添加层级
               </el-button>
               <el-button @click="deleteLevel" type="danger" plain :disabled="levels.length <= 1">
-                <el-icon><Delete /></el-icon>
+                <el-icon>
+                  <Delete />
+                </el-icon>
                 删除当前层
               </el-button>
             </el-button-group>
             <div class="level-selector">
               <span>当前层级：</span>
               <el-select v-model="currentLevel" size="small">
-                <el-option v-for="(level, index) in levels" :key="index" :label="'第 ' + (index + 1) + ' 层'" :value="index" />
+                <el-option v-for="(level, index) in levels" :key="index" :label="'第 ' + (index + 1) + ' 层'"
+                  :value="index" />
               </el-select>
             </div>
           </div>
         </el-col>
-        <el-col :span="12">
+        <el-col :span="9">
           <el-radio-group v-model="currentTool">
             <el-radio-button label="wall">
               <el-icon>
@@ -78,7 +83,7 @@
             </el-radio-button>
           </el-radio-group>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="7">
           <div class="file-controls">
             <el-button type="primary" @click="loadMap">
               <el-icon>
@@ -199,7 +204,7 @@ const loadMap = async () => {
   try {
     const result = await ipcRenderer.invoke('load-map')
     console.log('加载地图结果:', result)
-    
+
     if (result.success && result.data) {
       const config = result.data
       console.log('地图配置:', config)
@@ -219,7 +224,7 @@ const loadMap = async () => {
 
       // 更新层级数据
       levels.value = config.levels.map(level => ({
-        mapData: level.maze.map(row => 
+        mapData: level.maze.map(row =>
           Array.isArray(row) ? row.map(cell => ({ walkable: !!cell })) : []
         ),
         blueGems: Array.isArray(level.blueGems) ? level.blueGems : [],
@@ -282,13 +287,13 @@ const deleteLevel = () => {
     } else if (startPos.value && startPos.value.level > currentLevel.value) {
       startPos.value.level--
     }
-    
+
     if (exitPos.value && exitPos.value.level === currentLevel.value) {
       exitPos.value = null
     } else if (exitPos.value && exitPos.value.level > currentLevel.value) {
       exitPos.value.level--
     }
-    
+
     // 更新传送门的层级引用
     teleportGates.value = teleportGates.value.filter(gate => {
       // 移除涉及被删除层级的传送门
@@ -304,7 +309,7 @@ const deleteLevel = () => {
       }
       return true
     })
-    
+
     levels.value.splice(currentLevel.value, 1)
     currentLevel.value = Math.max(0, currentLevel.value - 1)
   }
@@ -416,7 +421,7 @@ const handleCellHover = (x, y) => {
 // 处理单元格修改
 const handleCellModification = (x, y) => {
   const level = levels.value[currentLevel.value]
-  
+
   switch (currentTool.value) {
     case 'wall':
       level.mapData[y][x].walkable = false
@@ -477,26 +482,26 @@ const handleCellModification = (x, y) => {
 // 移除指定位置的所有对象
 const removeAllAtPosition = (x, y) => {
   const level = levels.value[currentLevel.value]
-  
+
   level.blueGems = level.blueGems.filter(g => g.x !== x || g.y !== y)
   level.redGems = level.redGems.filter(g => g.x !== x || g.y !== y)
   level.monsters = level.monsters.filter(m => m.x !== x || m.y !== y)
-  
-  if (startPos.value && 
-      startPos.value.x === x && 
-      startPos.value.y === y && 
-      startPos.value.level === currentLevel.value) {
+
+  if (startPos.value &&
+    startPos.value.x === x &&
+    startPos.value.y === y &&
+    startPos.value.level === currentLevel.value) {
     startPos.value = null
   }
-  
-  if (exitPos.value && 
-      exitPos.value.x === x && 
-      exitPos.value.y === y && 
-      exitPos.value.level === currentLevel.value) {
+
+  if (exitPos.value &&
+    exitPos.value.x === x &&
+    exitPos.value.y === y &&
+    exitPos.value.level === currentLevel.value) {
     exitPos.value = null
   }
-  
-  teleportGates.value = teleportGates.value.filter(t => 
+
+  teleportGates.value = teleportGates.value.filter(t =>
     !t.some(g => g.x === x && g.y === y && g.level === currentLevel.value)
   )
 }
@@ -670,11 +675,20 @@ initMap()
   flex-direction: column;
   gap: 10px;
   margin-top: 10px;
+  align-items: center;
 }
 
 .level-selector {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  margin-right: 10px;
+}
+
+.level-selector span {
+  margin-right: 10px;
+  word-break: keep-all;
+  white-space: nowrap;
 }
 </style>
