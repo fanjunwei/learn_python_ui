@@ -106,6 +106,7 @@ const playerFadeOutDuration = 1.0
 let playerFadeOutProgress = playerFadeOutDuration
 let currentAnimation = null
 let isTeleporting = false
+let teleportStartPosition = new THREE.Vector3()
 let teleportEndPosition = new THREE.Vector3()
 let teleportProgress = 0
 const teleportDuration = 2.0
@@ -395,8 +396,7 @@ const initThreeJS = async () => {
       if (t <= 0.5) { // 渐隐阶段
         const fadeOutT = t / 0.5
         // 从当前层级高度渐变消失
-        const currentLevelY = gameState.value.teleportStartPosition.level * LEVEL_HEIGHT
-        playerModel.position.y = currentLevelY - fadeOutT * 0.5
+        playerModel.position.y = teleportStartPosition.y - fadeOutT * 0.5
         playerModel.traverse((node) => {
           if (node.isMesh) {
             node.material.transparent = true
@@ -408,8 +408,7 @@ const initThreeJS = async () => {
         playerModel.visible = true
         playerModel.position.copy(teleportEndPosition)
         // 在目标层级高度渐变出现
-        const targetLevelY = gameState.value.playerPosition.level * LEVEL_HEIGHT
-        playerModel.position.y = targetLevelY + fadeInT * 0.5 - 0.5
+        playerModel.position.y = teleportEndPosition.y + fadeInT * 0.5 - 0.5
         playerModel.traverse((node) => {
           if (node.isMesh) {
             node.material.transparent = true
@@ -419,7 +418,6 @@ const initThreeJS = async () => {
       } else { // 传送完成
         isTeleporting = false
         playerModel.position.copy(teleportEndPosition)
-        playerModel.position.y = 0
         playerModel.traverse((node) => {
           if (node.isMesh) {
             node.material.transparent = false
@@ -499,6 +497,7 @@ const updateScene = () => {
       animationProgress = 0
     }
   } else {
+    teleportStartPosition.copy(playerModel.position)
     // 处理传送门动画
     teleportEndPosition.set(
       gameState.value.playerPosition.x - gameState.value.maze[0].length / 2,
@@ -506,13 +505,6 @@ const updateScene = () => {
       gameState.value.playerPosition.y - gameState.value.maze.length / 2
     )
     // 记录传送起始位置
-    if (!isTeleporting) {
-      gameState.value.teleportStartPosition = {
-        x: gameState.value.playerPosition.x,
-        y: gameState.value.playerPosition.y,
-        level: gameState.value.currentLevel
-      }
-    }
     isTeleporting = true
     teleportProgress = 0
     switchAnimation('Idle')
