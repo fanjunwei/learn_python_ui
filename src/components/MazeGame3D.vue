@@ -206,7 +206,7 @@ const switchAnimation = (newAnimation) => {
   if (currentAnimation === newAnimation) {
     return
   }
-  const fadeTime = 0.2
+  const fadeTime = 0.5
   if (currentAnimation && playerAnimations[currentAnimation]) {
     playerAnimations[currentAnimation].fadeOut(fadeTime)
   }
@@ -224,7 +224,7 @@ const initThreeJS = async () => {
 
   // 创建相机
   camera = new THREE.PerspectiveCamera(75, container.value.clientWidth / container.value.clientHeight, 0.1, 1000)
-  camera.position.set(5, 5, 10)
+  camera.position.set(2, 3, 2)
   camera.lookAt(0, 0, 0)
 
   // 创建渲染器
@@ -311,9 +311,8 @@ const initThreeJS = async () => {
     if (animationProgress < duration) {
       animationProgress += delta
       const t = Math.min(animationProgress / duration, 1)
-      // const easeT = t * (2 - t) // 缓动函数
-      const easeT = t
-
+      // 使用缓入缓出的缓动函数
+      const easeT = t < 0.5 ? (1 - Math.cos(t * Math.PI)) / 2 : (1 + Math.sin((t - 0.5) * Math.PI)) / 2
       if (playerModel) {
         // 位置插值
         playerModel.position.lerpVectors(currentPlayerPosition, targetPlayerPosition, easeT)
@@ -324,7 +323,7 @@ const initThreeJS = async () => {
         playerModel.rotation.y = currentAngle + angleDiff * easeT
 
         // 根据动画进度切换动画状态
-        if (t < 1) {
+        if (t < 0.8) {
           if (gameState.value.action === 'forward') {
             switchAnimation('Walk')
           } else if (gameState.value.action === 'turnLeft') {
