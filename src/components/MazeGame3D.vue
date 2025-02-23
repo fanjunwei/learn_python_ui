@@ -11,6 +11,9 @@
           <span>{{ gameState.collectedRedGems }}/{{ gameState.requiredRedGems }}</span>
         </div>
       </div>
+      <div class="level-info">
+        当前层级: {{ gameState.currentLevel + 1 }}
+      </div>
       <div class="exit-status">
         出口状态: <span>{{ gameState.exitOpen ? '开启' : '关闭' }}</span>
       </div>
@@ -67,12 +70,13 @@ const ipcRenderer = electron.ipcRenderer
 // 游戏状态
 const gameState = ref({
   maze: [],
-  playerPosition: { x: 0, y: 0 },
+  playerPosition: { x: 0, y: 0, level: 0 },
+  currentLevel: 0,
   playerDirection: 0,
   blueGems: [],
   redGems: [],
   monsters: [],
-  exit: { x: 0, y: 0 },
+  exit: { x: 0, y: 0, level: 0 },
   exitOpen: false,
   collectedBlueGems: 0,
   collectedRedGems: 0,
@@ -489,6 +493,7 @@ const updateScene = () => {
       animationProgress = 0
     }
   } else {
+    // 处理传送门动画
     teleportEndPosition.set(
       gameState.value.playerPosition.x - gameState.value.maze[0].length / 2,
       0,
@@ -510,96 +515,96 @@ const updateScene = () => {
     if (gameState.value.teleportGates && teleportGateModel) {
       gameState.value.teleportGates.forEach((gate, index) => {
         gate.forEach(pos => {
-          const gateModel = SkeletonUtils.clone(teleportGateModel)
-          // 使用与2D视图相同的颜色生成算法
-          const hue = (index * 50) % 360
-          const color = new THREE.Color().setHSL(hue / 360, 0.7, 0.5)
+          if (pos.level === gameState.value.currentLevel) {
+            const gateModel = SkeletonUtils.clone(teleportGateModel)
+            // 使用与2D视图相同的颜色生成算法
+            const hue = (index * 50) % 360
+            const color = new THREE.Color().setHSL(hue / 360, 0.7, 0.5)
 
-          // 为模型的所有材质设置颜色
-          gateModel.traverse((node) => {
-            if (node.isMesh) {
-              node.material = node.material.clone() // 克隆材质以避免共享
-              node.material.color = color
-              node.material.emissive = color
-              node.material.emissiveIntensity = 2.0
-              // 调整材质参数以增强视觉效果
-              if (node.material.metalness !== undefined) {
-                node.material.metalness = 0.8
+            // 为模型的所有材质设置颜色
+            gateModel.traverse((node) => {
+              if (node.isMesh) {
+                node.material = node.material.clone() // 克隆材质以避免共享
+                node.material.color = color
+                node.material.emissive = color
+                node.material.emissiveIntensity = 2.0
+                // 调整材质参数以增强视觉效果
+                if (node.material.metalness !== undefined) {
+                  node.material.metalness = 0.8
+                }
+                if (node.material.roughness !== undefined) {
+                  node.material.roughness = 0.2
+                }
               }
-              if (node.material.roughness !== undefined) {
-                node.material.roughness = 0.2
-              }
-            }
-          })
+            })
 
-          gateModel.position.set(
-            pos.x - gameState.value.maze[0].length / 2,
-            0,
-            pos.y - gameState.value.maze.length / 2
-          )
-          scene.add(gateModel)
-          teleportGateMeshes.push(gateModel)
+            gateModel.position.set(
+              pos.x - gameState.value.maze[0].length / 2,
+              0,
+              pos.y - gameState.value.maze.length / 2
+            )
+            scene.add(gateModel)
+            teleportGateMeshes.push(gateModel)
+          }
         })
       })
     }
-  }
 
-  // 清理旧的物体
-  walls.forEach(wall => {
-    disposeObject(wall)
-    scene.remove(wall)
-  })
-  if (exitMesh) {
-    disposeObject(exitMesh)
-    scene.remove(exitMesh)
-  }
-
-  walls = []
-
-  // 创建墙壁
-  const wallGeometry = new THREE.BoxGeometry(0.99, 0.99, 0.99)
-  const wallMaterial = new THREE.MeshPhysicalMaterial({
-    color: 0xffffb5,
-    metalness: 0.9,
-    roughness: 0.1,
-    envMapIntensity: 1.5,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.1,
-    reflectivity: 1.0
-  })
-
-  gameState.value.maze.forEach((row, y) => {
-    row.forEach((cell, x) => {
-      if (cell.walkable) {
-        const wall = new THREE.Mesh(wallGeometry, wallMaterial)
-        wall.position.set(x - gameState.value.maze[0].length / 2, -0.5, y - gameState.value.maze.length / 2)
-        wall.receiveShadow = true
-        scene.add(wall)
-        walls.push(wall)
-      }
+    // 清理旧的物体
+    walls.forEach(wall => {
+      disposeObject(wall)
+      scene.remove(wall)
     })
-  })
+    if (exitMesh) {
+      disposeObject(exitMesh)
+      scene.remove(exitMesh)
+    }
 
-  // 创建宝石
-  if (gameState.value.action === 'reset' || gameState.value.action === 'collect_blue') {
-    const createBlueGem = () => {
-      blueGemMeshes.forEach(gem => {
-        disposeObject(gem)
-        scene.remove(gem)
+    walls = []
+
+    // 创建墙壁
+    const wallGeometry = new THREE.BoxGeometry(0.99, 0.99, 0.99)
+    const wallMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xffffb5,
+      metalness: 0.9,
+      roughness: 0.1,
+      envMapIntensity: 1.5,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1,
+      reflectivity: 1.0
+    })
+
+    gameState.value.maze.forEach((row, y) => {
+      row.forEach((cell, x) => {
+        if (cell.walkable) {
+          const wall = new THREE.Mesh(wallGeometry, wallMaterial)
+          wall.position.set(x - gameState.value.maze[0].length / 2, -0.5, y - gameState.value.maze.length / 2)
+          wall.receiveShadow = true
+          scene.add(wall)
+          walls.push(wall)
+        }
       })
-      blueGemMeshes = []
-      const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
-      const blueGemMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x0000ff,
-        metalness: 0.9,
-        roughness: 0.1,
-        envMapIntensity: 1.5,
-        emissive: 0x0000ff,
-        emissiveIntensity: 0.2,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1
-      })
-      gameState.value.blueGems.forEach((gem, index) => {
+    })
+
+    // 创建宝石
+    blueGemMeshes.forEach(gem => {
+      disposeObject(gem)
+      scene.remove(gem)
+    })
+    blueGemMeshes = []
+    const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
+    const blueGemMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x0000ff,
+      metalness: 0.9,
+      roughness: 0.1,
+      envMapIntensity: 1.5,
+      emissive: 0x0000ff,
+      emissiveIntensity: 0.2,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1
+    })
+    gameState.value.blueGems.forEach((gem, index) => {
+      if (gem.level === gameState.value.currentLevel) {
         const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
         blueMesh.position.set(
           gem.x - gameState.value.maze[0].length / 2,
@@ -608,35 +613,26 @@ const updateScene = () => {
         )
         scene.add(blueMesh)
         blueGemMeshes.push(blueMesh)
-      })
-    }
-    if (gameState.value.action === 'reset') {
-      createBlueGem()
-    } else if (gameState.value.action === 'collect_blue') {
-      setTimeout(() => {
-        createBlueGem()
-      }, 1000)
-    }
-  }
-  if (gameState.value.action === 'reset' || gameState.value.action === 'collect_red') {
-    const createRedGem = () => {
-      redGemMeshes.forEach(gem => {
-        disposeObject(gem)
-        scene.remove(gem)
-      })
-      redGemMeshes = []
-      const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
-      const redGemMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xff0000,
-        metalness: 0.9,
-        roughness: 0.1,
-        envMapIntensity: 1.5,
-        emissive: 0xff0000,
-        emissiveIntensity: 0.2,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1
-      })
-      gameState.value.redGems.forEach((gem, index) => {
+      }
+    })
+
+    redGemMeshes.forEach(gem => {
+      disposeObject(gem)
+      scene.remove(gem)
+    })
+    redGemMeshes = []
+    const redGemMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xff0000,
+      metalness: 0.9,
+      roughness: 0.1,
+      envMapIntensity: 1.5,
+      emissive: 0xff0000,
+      emissiveIntensity: 0.2,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1
+    })
+    gameState.value.redGems.forEach((gem, index) => {
+      if (gem.level === gameState.value.currentLevel) {
         const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
         redMesh.position.set(
           gem.x - gameState.value.maze[0].length / 2,
@@ -645,17 +641,10 @@ const updateScene = () => {
         )
         scene.add(redMesh)
         redGemMeshes.push(redMesh)
-      })
-    }
-    if (gameState.value.action === 'reset') {
-      createRedGem()
-    } else if (gameState.value.action === 'collect_red') {
-      setTimeout(() => {
-        createRedGem()
-      }, 1000)
-    }
-  }
-  if (gameState.value.action === 'reset') {
+      }
+    })
+
+    // 创建怪物
     monsterMeshes.forEach(monster => {
       if (monster.userData.mixer) {
         monster.userData.mixer.stopAllAction()
@@ -665,13 +654,10 @@ const updateScene = () => {
       scene.remove(monster)
     })
     monsterMeshes = []
-    // 创建怪物
-    gameState.value.monsters.forEach((monster, index) => {
-      if (monsterModel) {
-        // 使用SkeletonUtils克隆带骨骼的模型
-        const newMonsterModel = SkeletonUtils.clone(monsterModel)
 
-        // 复制原始模型的变换
+    gameState.value.monsters.forEach((monster, index) => {
+      if (monster.level === gameState.value.currentLevel && monsterModel) {
+        const newMonsterModel = SkeletonUtils.clone(monsterModel)
         newMonsterModel.scale.copy(monsterModel.scale)
         newMonsterModel.position.set(
           monster.x - gameState.value.maze[0].length / 2,
@@ -680,17 +666,14 @@ const updateScene = () => {
         )
         newMonsterModel.rotation.y = (monster.x + monster.y) * Math.PI * 0.2
 
-        // 为每个怪物创建独立的动画混合器
         const mixer = new THREE.AnimationMixer(newMonsterModel)
         newMonsterModel.userData.mixer = mixer
 
-        // 复制所有动画到新的怪物
         Object.entries(monsterAnimations).forEach(([name, originalAction]) => {
           const clip = originalAction.getClip()
           const action = mixer.clipAction(clip)
           if (name === 'Idle') {
-            // 为每个怪物错开动画播放时间
-            action.time = index * 2 // 每个怪物错开2秒播放
+            action.time = index * 2
             action.play()
           }
         })
@@ -699,29 +682,31 @@ const updateScene = () => {
         monsterMeshes.push(newMonsterModel)
       }
     })
-  }
 
-  // 创建出口
-  const exitGeometry = new THREE.BoxGeometry(1, 0.05, 1)
-  const exitMaterial = new THREE.MeshPhysicalMaterial({
-    color: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
-    metalness: 0.7,
-    roughness: 0.3,
-    transparent: true,
-    opacity: 0.7,
-    envMapIntensity: 1.2,
-    emissive: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
-    emissiveIntensity: 0.5,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.1
-  })
-  exitMesh = new THREE.Mesh(exitGeometry, exitMaterial)
-  exitMesh.position.set(
-    gameState.value.exit.x - gameState.value.maze[0].length / 2,
-    0.05,
-    gameState.value.exit.y - gameState.value.maze.length / 2
-  )
-  scene.add(exitMesh)
+    // 创建出口
+    if (gameState.value.exit.level === gameState.value.currentLevel) {
+      const exitGeometry = new THREE.BoxGeometry(1, 0.05, 1)
+      const exitMaterial = new THREE.MeshPhysicalMaterial({
+        color: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
+        metalness: 0.7,
+        roughness: 0.3,
+        transparent: true,
+        opacity: 0.7,
+        envMapIntensity: 1.2,
+        emissive: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
+        emissiveIntensity: 0.5,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1
+      })
+      exitMesh = new THREE.Mesh(exitGeometry, exitMaterial)
+      exitMesh.position.set(
+        gameState.value.exit.x - gameState.value.maze[0].length / 2,
+        0.05,
+        gameState.value.exit.y - gameState.value.maze.length / 2
+      )
+      scene.add(exitMesh)
+    }
+  }
 }
 
 // 监听窗口大小变化
@@ -998,5 +983,12 @@ onUnmounted(() => {
 
 .gem-icon.blue {
   background-position: -24px 0;
+}
+
+.level-info {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  padding: 0 20px;
 }
 </style>

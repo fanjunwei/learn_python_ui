@@ -32,43 +32,93 @@ def get_valid_positions(maze, count, exclude_positions=None):
     return random.sample(valid_positions, min(count, len(valid_positions)))
 
 
-def generate_map_config(index):
-    """生成单个地图配置"""
-    width = random.randint(6, 8)
-    height = random.randint(6, 8)
-    wall_density = random.uniform(0.15, 0.25)
+def generate_level_config(width, height, wall_density, used_positions=None):
+    """生成单层迷宫配置"""
+    if used_positions is None:
+        used_positions = set()
 
     maze = generate_maze(width, height, wall_density)
-    used_positions = {(0, 0)}  # 起点位置
+    level_used_positions = used_positions.copy()
 
     # 生成宝石位置
-    blue_gem_count = random.randint(3, 5)
-    blue_gem_positions = get_valid_positions(maze, blue_gem_count, used_positions)
-    used_positions.update(set(blue_gem_positions))
+    blue_gem_count = random.randint(2, 3)
+    blue_gem_positions = get_valid_positions(maze, blue_gem_count, level_used_positions)
+    level_used_positions.update(set(blue_gem_positions))
 
-    red_gem_count = random.randint(3, 5)
-    red_gem_positions = get_valid_positions(maze, red_gem_count, used_positions)
-    used_positions.update(set(red_gem_positions))
+    red_gem_count = random.randint(2, 3)
+    red_gem_positions = get_valid_positions(maze, red_gem_count, level_used_positions)
+    level_used_positions.update(set(red_gem_positions))
 
     # 生成怪物位置
-    monster_count = random.randint(2, 4)
-    monster_positions = get_valid_positions(maze, monster_count, used_positions)
-    used_positions.update(set(monster_positions))
+    monster_count = random.randint(1, 2)
+    monster_positions = get_valid_positions(maze, monster_count, level_used_positions)
+    level_used_positions.update(set(monster_positions))
 
-    # 生成出口位置
-    exit_positions = get_valid_positions(maze, 1, used_positions)
-    exit_pos = exit_positions[0]
-
-    config = {
-        "title": f"迷宫配置 {index:03d}",
+    return {
         "maze": maze,
-        "start": {"x": 0, "y": 0},
         "blueGems": [{"x": x, "y": y} for x, y in blue_gem_positions],
         "redGems": [{"x": x, "y": y} for x, y in red_gem_positions],
         "monsters": [{"x": x, "y": y} for x, y in monster_positions],
-        "exit": {"x": exit_pos[0], "y": exit_pos[1]},
-        "requiredBlueGems": blue_gem_count,
-        "requiredRedGems": red_gem_count,
+    }, level_used_positions
+
+
+def generate_map_config(index):
+    """生成多层迷宫配置"""
+    level_count = random.randint(2, 3)  # 随机生成2-3层迷宫
+    levels = []
+    all_used_positions = set()
+    teleport_gates = []
+    
+    # 为每层生成基本配置
+    for level in range(level_count):
+        width = random.randint(6, 8)
+        height = random.randint(6, 8)
+        wall_density = random.uniform(0.15, 0.25)
+        
+        level_config, used_positions = generate_level_config(width, height, wall_density, all_used_positions)
+        levels.append(level_config)
+        all_used_positions.update(used_positions)
+
+    # 生成起点（在第一层）
+    start = {"x": 0, "y": 0, "level": 0}
+
+    # 生成终点（在最后一层）
+    last_level = levels[-1]
+    exit_positions = get_valid_positions(last_level["maze"], 1, set())
+    exit_pos = exit_positions[0]
+    exit = {"x": exit_pos[0], "y": exit_pos[1], "level": level_count - 1}
+
+    # 生成层间传送门
+    for i in range(level_count - 1):
+        current_level = levels[i]
+        next_level = levels[i + 1]
+        
+        # 在当前层找一个传送点
+        current_positions = get_valid_positions(current_level["maze"], 1, set())
+        current_pos = current_positions[0]
+        
+        # 在下一层找一个传送点
+        next_positions = get_valid_positions(next_level["maze"], 1, set())
+        next_pos = next_positions[0]
+        
+        # 添加传送门
+        teleport_gates.append([
+            {"x": current_pos[0], "y": current_pos[1], "level": i},
+            {"x": next_pos[0], "y": next_pos[1], "level": i + 1}
+        ])
+
+    # 计算所需宝石总数
+    total_blue_gems = sum(len(level["blueGems"]) for level in levels)
+    total_red_gems = sum(len(level["redGems"]) for level in levels)
+
+    config = {
+        "title": f"多层迷宫配置 {index:03d}",
+        "start": start,
+        "exit": exit,
+        "levels": levels,
+        "teleportGates": teleport_gates,
+        "requiredBlueGems": total_blue_gems,
+        "requiredRedGems": total_red_gems
     }
 
     return config
@@ -79,7 +129,7 @@ def generate_all_maps():
     configs_dir = Path(__file__).parent / "configs"
     configs_dir.mkdir(exist_ok=True)
 
-    for i in range(1, 22):  # 从002开始，因为001已经存在
+    for i in range(1, 22):  # 生成21个配置文件
         config = generate_map_config(i)
         config_path = configs_dir / f"{i:03d}_config.toml"
         if config_path.exists():

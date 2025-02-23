@@ -92,18 +92,41 @@ ipcMain.handle('load-map', async (event) => {
     if (filePaths && filePaths.length > 0) {
       lastFilePath = filePaths[0];
       const content = fs.readFileSync(filePaths[0], 'utf-8');
+      console.log('读取的文件内容:', content);
+      
       // 解析 TOML 内容
       const config = TOML.parse(content);
+      console.log('解析后的配置:', config);
+
+      // 验证配置数据的完整性
+      if (!config.levels || !Array.isArray(config.levels)) {
+        throw new Error('无效的地图配置：缺少层级数据');
+      }
+
+      // 确保每个层级都有必要的属性
+      config.levels = config.levels.map(level => ({
+        maze: Array.isArray(level.maze) ? level.maze : [],
+        blueGems: Array.isArray(level.blueGems) ? level.blueGems : [],
+        redGems: Array.isArray(level.redGems) ? level.redGems : [],
+        monsters: Array.isArray(level.monsters) ? level.monsters : []
+      }));
+
+      // 确保其他必要的属性存在
+      const processedConfig = {
+        ...config,
+        start: config.start || { x: 0, y: 0, level: 0 },
+        exit: config.exit || null,
+        teleportGates: Array.isArray(config.teleportGates) ? config.teleportGates : []
+      };
+
       return { 
         success: true, 
-        data: {
-          ...config,
-          maze: config.maze.map(row => row.map(cell => ({ walkable: !!cell })))
-        }
+        data: processedConfig
       };
     }
     return { success: false, message: null };
   } catch (error) {
+    console.error('加载地图错误:', error);
     return { success: false, message: error.message };
   }
 });

@@ -53,8 +53,9 @@ app.use(express.json());
 
 // 游戏状态
 let gameState = {
-  maze: [],
-  playerPosition: { x: 0, y: 0 },
+  currentLevel: 0,
+  levels: [],
+  playerPosition: { x: 0, y: 0, level: 0 },
   playerDirection: 0, // 0: 上, 1: 右, 2: 下, 3: 左
   blueGems: [],
   redGems: [],
@@ -64,30 +65,47 @@ let gameState = {
   requiredRedGems: 3,
   monsters: [],
   exitOpen: false,
-  exit: { x: 0, y: 0 },
+  exit: { x: 0, y: 0, level: 0 },
   gameOver: null,
   success: false,
   autoCollect: false,
   onGemType: 'none',
+  teleportGates: []
 };
 
 // 示例迷宫配置
 const defaultMazeConfig = {
-  maze: [
-    [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
-    [{ walkable: true }, { walkable: false }, { walkable: true }, { walkable: false }, { walkable: true }],
-    [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
-    [{ walkable: true }, { walkable: false }, { walkable: true }, { walkable: false }, { walkable: true }],
-    [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }]
+  start: { x: 0, y: 0, level: 0 },
+  exit: { x: 4, y: 2, level: 1 },
+  levels: [
+    {
+      maze: [
+        [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
+        [{ walkable: true }, { walkable: false }, { walkable: true }, { walkable: false }, { walkable: true }],
+        [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
+        [{ walkable: true }, { walkable: false }, { walkable: true }, { walkable: false }, { walkable: true }],
+        [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }]
+      ],
+      blueGems: [{ x: 2, y: 2 }, { x: 0, y: 4 }],
+      redGems: [{ x: 2, y: 0 }, { x: 4, y: 4 }],
+      monsters: [{ x: 2, y: 1 }, { x: 2, y: 3 }],
+    },
+    {
+      maze: [
+        [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
+        [{ walkable: true }, { walkable: false }, { walkable: true }, { walkable: false }, { walkable: true }],
+        [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
+        [{ walkable: true }, { walkable: false }, { walkable: true }, { walkable: false }, { walkable: true }],
+        [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }]
+      ],
+      blueGems: [{ x: 1, y: 1 }, { x: 3, y: 3 }],
+      redGems: [{ x: 1, y: 3 }, { x: 3, y: 1 }],
+      monsters: [{ x: 2, y: 2 }],
+    }
   ],
-  start: { x: 0, y: 0 },
-  blueGems: [{ x: 2, y: 2 }, { x: 0, y: 4 }],
-  redGems: [{ x: 2, y: 0 }, { x: 4, y: 4 }],
-  monsters: [{ x: 2, y: 1 }, { x: 2, y: 3 }],
-  teleportGates: [[{ x: 4, y: 0 }, { x: 0, y: 2 }], [{ x: 3, y: 2 }, { x: 0, y: 3 }]],
-  exit: { x: 4, y: 2 },
-  requiredBlueGems: 3,
-  requiredRedGems: 3,
+  teleportGates: [[{ x: 4, y: 0, level: 0 }, { x: 0, y: 2, level: 1 }]],
+  requiredBlueGems: 4,
+  requiredRedGems: 4,
   autoCollect: false
 };
 
@@ -270,23 +288,35 @@ app.post('/move', async (req, res) => {
 
 // 重置游戏状态
 function resetGameState(config) {
-  gameState.maze = JSON.parse(JSON.stringify(config.maze));
+  gameState.levels = JSON.parse(JSON.stringify(config.levels));
   gameState.playerPosition = { ...config.start };
-  gameState.blueGems = JSON.parse(JSON.stringify(config.blueGems));
-  gameState.redGems = JSON.parse(JSON.stringify(config.redGems));
-  gameState.monsters = JSON.parse(JSON.stringify(config.monsters));
-  gameState.teleportGates = JSON.parse(JSON.stringify(config.teleportGates));
+  gameState.currentLevel = config.start.level;
+  
+  // 收集所有层级的宝石和怪物
+  gameState.blueGems = [];
+  gameState.redGems = [];
+  gameState.monsters = [];
+  
+  config.levels.forEach((level, index) => {
+    gameState.blueGems.push(...level.blueGems.map(gem => ({ ...gem, level: index })));
+    gameState.redGems.push(...level.redGems.map(gem => ({ ...gem, level: index })));
+    gameState.monsters.push(...level.monsters.map(monster => ({ ...monster, level: index })));
+  });
+  
   gameState.exit = { ...config.exit };
+  gameState.teleportGates = config.teleportGates || [];
   gameState.requiredBlueGems = config.requiredBlueGems;
   gameState.requiredRedGems = config.requiredRedGems;
   gameState.autoCollect = !!config.autoCollect;
   gameState.collectedBlueGems = 0;
   gameState.collectedRedGems = 0;
+  
   if (gameState.requiredBlueGems > 0 || gameState.requiredRedGems > 0) {
     gameState.exitOpen = false;
   } else {
     gameState.exitOpen = true;
   }
+  
   gameState.playerDirection = 0;
   gameState.gameOver = false;
   gameState.success = false;
@@ -294,7 +324,10 @@ function resetGameState(config) {
 
 // 生成渲染状态
 function generateRenderState() {
-  return gameState;
+  return {
+    ...gameState,
+    maze: gameState.levels[gameState.currentLevel].maze,
+  };
 }
 
 // 移动前进
@@ -339,20 +372,22 @@ function turnRight() {
 
 // 获取下一个位置
 function getNextPosition() {
-  const { x, y } = gameState.playerPosition;
+  const { x, y, level } = gameState.playerPosition;
   switch (gameState.playerDirection) {
-    case 0: return { x, y: y - 1 }; // 上
-    case 1: return { x: x + 1, y }; // 右
-    case 2: return { x, y: y + 1 }; // 下
-    case 3: return { x: x - 1, y }; // 左
+    case 0: return { x, y: y - 1, level }; // 上
+    case 1: return { x: x + 1, y, level }; // 右
+    case 2: return { x, y: y + 1, level }; // 下
+    case 3: return { x: x - 1, y, level }; // 左
   }
 }
 
 // 检查移动是否有效
 function isValidMove(position) {
-  return gameState.maze[position.y] &&
-    gameState.maze[position.y][position.x] &&
-    gameState.maze[position.y][position.x].walkable;
+  const currentLevel = gameState.levels[position.level];
+  return currentLevel &&
+    currentLevel.maze[position.y] &&
+    currentLevel.maze[position.y][position.x] &&
+    currentLevel.maze[position.y][position.x].walkable;
 }
 
 // 检查碰撞
@@ -360,8 +395,12 @@ function checkCollisions(result, operate) {
   const pos = gameState.playerPosition;
 
   // 检查宝石
-  const blueGemIndex = gameState.blueGems.findIndex(g => g.x === pos.x && g.y === pos.y);
-  const redGemIndex = gameState.redGems.findIndex(g => g.x === pos.x && g.y === pos.y);
+  const blueGemIndex = gameState.blueGems.findIndex(g => 
+    g.x === pos.x && g.y === pos.y && g.level === pos.level
+  );
+  const redGemIndex = gameState.redGems.findIndex(g => 
+    g.x === pos.x && g.y === pos.y && g.level === pos.level
+  );
 
   if (blueGemIndex !== -1) {
     if (gameState.autoCollect || operate === 'collect_blue') {
@@ -389,32 +428,33 @@ function checkCollisions(result, operate) {
   }
 
   // 检查怪物
-  if (gameState.monsters.some(m => m.x === pos.x && m.y === pos.y)) {
+  if (gameState.monsters.some(m => 
+    m.x === pos.x && m.y === pos.y && m.level === pos.level
+  )) {
     result.monsterHit = true;
     gameState.gameOver = true;
     gameState.success = false;
   }
-  if (operate === 'forward') {
 
+  if (operate === 'forward') {
     // 检查传送门
     let teleportGate = null;
-    // 检查是否在传送门上, 传送门是两个点, 如果角色在一个点上, 则传送到另一个点上
+    // 检查是否在传送门上
     gameState.teleportGates.some(t => {
-      return t.some(g => {
-        if (t.length === 2) {
-          const isOnGate = (gate, otherGate) => {
-            let check = gate.x === pos.x && gate.y === pos.y;
-            if (check) {
-              return otherGate;
-            }
-            return null;
+      if (t.length === 2) {
+        const isOnGate = (gate, otherGate) => {
+          let check = gate.x === pos.x && gate.y === pos.y && gate.level === pos.level;
+          if (check) {
+            return otherGate;
           }
-          teleportGate = isOnGate(t[0], t[1]) || isOnGate(t[1], t[0]);
-          return !!teleportGate;
+          return null;
         }
-        return false;
-      })
-    })
+        teleportGate = isOnGate(t[0], t[1]) || isOnGate(t[1], t[0]);
+        return !!teleportGate;
+      }
+      return false;
+    });
+
     if (teleportGate) {
       let timeout = 2000;
       timeout = timeout * (100 - speed) / 100;
@@ -422,8 +462,9 @@ function checkCollisions(result, operate) {
       setTimeout(() => {
         if (teleportGate) {
           gameState.onTeleport = false;
-          gameState.teleportStartPosition = gameState.playerPosition;
-          gameState.playerPosition = teleportGate;
+          gameState.teleportStartPosition = { ...gameState.playerPosition };
+          gameState.playerPosition = { ...teleportGate };
+          gameState.currentLevel = teleportGate.level;
           gameState.action = 'teleport';
           mainWindow.webContents.send('playAudio', 'teleport');
           mainWindow.webContents.send('renderGameState', generateRenderState());
@@ -441,7 +482,8 @@ function checkCollisions(result, operate) {
   // 检查出口
   if (gameState.exitOpen &&
     pos.x === gameState.exit.x &&
-    pos.y === gameState.exit.y) {
+    pos.y === gameState.exit.y &&
+    pos.level === gameState.exit.level) {
     result.reachedExit = true;
     gameState.gameOver = true;
     gameState.success = true;

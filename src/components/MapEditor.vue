@@ -12,6 +12,26 @@
             </el-form-item>
           </el-form>
         </el-col>
+        <el-col :span="6">
+          <div class="level-controls">
+            <el-button-group>
+              <el-button @click="addLevel" type="primary" plain>
+                <el-icon><Plus /></el-icon>
+                添加层级
+              </el-button>
+              <el-button @click="deleteLevel" type="danger" plain :disabled="levels.length <= 1">
+                <el-icon><Delete /></el-icon>
+                删除当前层
+              </el-button>
+            </el-button-group>
+            <div class="level-selector">
+              <span>当前层级：</span>
+              <el-select v-model="currentLevel" size="small">
+                <el-option v-for="(level, index) in levels" :key="index" :label="'第 ' + (index + 1) + ' 层'" :value="index" />
+              </el-select>
+            </div>
+          </div>
+        </el-col>
         <el-col :span="12">
           <el-radio-group v-model="currentTool">
             <el-radio-button label="wall">
@@ -100,6 +120,7 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import TeleportIcon from '@/assets/icons/teleport.svg?component'
+import { Plus, Delete } from '@element-plus/icons-vue'
 
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
@@ -111,7 +132,9 @@ const currentTool = ref('wall')
 const isDrawing = ref(false)
 
 // 地图数据
-const mapData = ref([])
+const currentLevel = ref(0)
+const levels = ref([])
+const mapData = computed(() => levels.value[currentLevel.value]?.mapData || [])
 const blueGems = ref([])
 const redGems = ref([])
 const monsters = ref([])
@@ -126,32 +149,34 @@ const saveMap = async () => {
     return
   }
 
-  // 将地图数据转换为简单的 0/1 数组
-  const mazeArray = mapData.value.map(row =>
-    row.map(cell => cell.walkable ? 1 : 0)
-  )
-
-  // 创建一个只包含简单数据类型的配置对象
-  const mapConfig = {
-    title: `迷宫配置`,
-    maze: mazeArray,
-    start: {
-      x: startPos.value.x,
-      y: startPos.value.y
-    },
-    blueGems: blueGems.value.map(gem => ({ x: gem.x, y: gem.y })),
-    redGems: redGems.value.map(gem => ({ x: gem.x, y: gem.y })),
-    monsters: monsters.value.map(monster => ({ x: monster.x, y: monster.y })),
-    teleportGates: teleportGates.value.map(gate => ([{ x: gate[0].x, y: gate[0].y }, { x: gate[1].x, y: gate[1].y }])),
-    exit: {
-      x: exitPos.value.x,
-      y: exitPos.value.y
-    },
-    requiredBlueGems: blueGems.value.length,
-    requiredRedGems: redGems.value.length
-  }
-
   try {
+    // 将地图数据转换为简单的 0/1 数组，并确保所有对象都是纯数据
+    const mapConfig = {
+      title: '多层迷宫配置',
+      start: {
+        x: startPos.value.x,
+        y: startPos.value.y,
+        level: startPos.value.level
+      },
+      exit: {
+        x: exitPos.value.x,
+        y: exitPos.value.y,
+        level: exitPos.value.level
+      },
+      levels: levels.value.map(level => ({
+        maze: level.mapData.map(row => row.map(cell => cell.walkable ? 1 : 0)),
+        blueGems: level.blueGems.map(gem => ({ x: gem.x, y: gem.y })),
+        redGems: level.redGems.map(gem => ({ x: gem.x, y: gem.y })),
+        monsters: level.monsters.map(monster => ({ x: monster.x, y: monster.y }))
+      })),
+      teleportGates: teleportGates.value.map(gate => [
+        { x: gate[0].x, y: gate[0].y, level: gate[0].level },
+        { x: gate[1].x, y: gate[1].y, level: gate[1].level }
+      ]),
+      requiredBlueGems: levels.value.reduce((sum, level) => sum + level.blueGems.length, 0),
+      requiredRedGems: levels.value.reduce((sum, level) => sum + level.redGems.length, 0)
+    }
+
     const result = await ipcRenderer.invoke('save-map', mapConfig)
     if (result.success) {
       ElMessage.success('地图保存成功！')
@@ -159,6 +184,7 @@ const saveMap = async () => {
       ElMessage.error('保存失败：' + result.message)
     }
   } catch (error) {
+    console.error('保存错误:', error)
     ElMessage.error('保存失败：' + error.message)
   }
 }
@@ -172,76 +198,149 @@ const resetMap = () => {
 const loadMap = async () => {
   try {
     const result = await ipcRenderer.invoke('load-map')
-    if (result.success) {
+    console.log('加载地图结果:', result)
+    
+    if (result.success && result.data) {
       const config = result.data
+      console.log('地图配置:', config)
+
+      // 验证配置数据的完整性
+      if (!config.levels || !Array.isArray(config.levels) || config.levels.length === 0) {
+        throw new Error('无效的地图配置：缺少层级数据')
+      }
+
+      if (!config.levels[0].maze || !Array.isArray(config.levels[0].maze) || config.levels[0].maze.length === 0) {
+        throw new Error('无效的地图配置：缺少迷宫数据')
+      }
 
       // 更新地图尺寸
-      width.value = config.maze[0].length
-      height.value = config.maze.length
+      width.value = config.levels[0].maze[0].length
+      height.value = config.levels[0].maze.length
 
-      // 更新地图数据
-      mapData.value = config.maze
+      // 更新层级数据
+      levels.value = config.levels.map(level => ({
+        mapData: level.maze.map(row => 
+          Array.isArray(row) ? row.map(cell => ({ walkable: !!cell })) : []
+        ),
+        blueGems: Array.isArray(level.blueGems) ? level.blueGems : [],
+        redGems: Array.isArray(level.redGems) ? level.redGems : [],
+        monsters: Array.isArray(level.monsters) ? level.monsters : [],
+      }))
 
       // 更新其他数据
-      blueGems.value = config.blueGems
-      redGems.value = config.redGems
-      monsters.value = config.monsters
-      teleportGates.value = config.teleportGates
-      startPos.value = config.start
-      exitPos.value = config.exit
+      currentLevel.value = 0
+      startPos.value = config.start || { x: 0, y: 0, level: 0 }
+      exitPos.value = config.exit || null
+      teleportGates.value = Array.isArray(config.teleportGates) ? config.teleportGates : []
+
       ElMessage.success('地图加载成功！')
     } else if (result.message) {
       ElMessage.error('加载失败：' + result.message)
+    } else {
+      ElMessage.error('加载失败：无效的返回数据')
     }
   } catch (error) {
+    console.error('加载地图错误:', error)
     ElMessage.error('加载失败：' + error.message)
   }
 }
 
 // 初始化地图
 const initMap = () => {
-  mapData.value = Array(height.value).fill().map(() =>
-    Array(width.value).fill().map(() => ({ walkable: true }))
-  )
-  teleportGates.value = []
-  teleportGateState.value = 0
-  teleportGate0.value = { x: 0, y: 0 }
-  startPos.value = null
+  levels.value = [{
+    mapData: Array(height.value).fill().map(() =>
+      Array(width.value).fill().map(() => ({ walkable: true }))
+    ),
+    blueGems: [],
+    redGems: [],
+    monsters: [],
+  }]
+  currentLevel.value = 0
+  startPos.value = { x: 0, y: 0, level: 0 }
   exitPos.value = null
-  blueGems.value = []
-  redGems.value = []
-  monsters.value = []
+  teleportGates.value = []
+}
+
+// 添加新层级
+const addLevel = () => {
+  levels.value.push({
+    mapData: Array(height.value).fill().map(() =>
+      Array(width.value).fill().map(() => ({ walkable: true }))
+    ),
+    blueGems: [],
+    redGems: [],
+    monsters: [],
+  })
+}
+
+// 删除当前层级
+const deleteLevel = () => {
+  if (levels.value.length > 1) {
+    // 更新起点和终点的层级引用
+    if (startPos.value && startPos.value.level === currentLevel.value) {
+      startPos.value = null
+    } else if (startPos.value && startPos.value.level > currentLevel.value) {
+      startPos.value.level--
+    }
+    
+    if (exitPos.value && exitPos.value.level === currentLevel.value) {
+      exitPos.value = null
+    } else if (exitPos.value && exitPos.value.level > currentLevel.value) {
+      exitPos.value.level--
+    }
+    
+    // 更新传送门的层级引用
+    teleportGates.value = teleportGates.value.filter(gate => {
+      // 移除涉及被删除层级的传送门
+      if (gate[0].level === currentLevel.value || gate[1].level === currentLevel.value) {
+        return false
+      }
+      // 更新高于被删除层级的层级引用
+      if (gate[0].level > currentLevel.value) {
+        gate[0].level--
+      }
+      if (gate[1].level > currentLevel.value) {
+        gate[1].level--
+      }
+      return true
+    })
+    
+    levels.value.splice(currentLevel.value, 1)
+    currentLevel.value = Math.max(0, currentLevel.value - 1)
+  }
 }
 
 // 调整地图大小
 const resizeMap = () => {
-  const newMap = Array(height.value).fill().map(() =>
-    Array(width.value).fill().map(() => ({ walkable: true }))
-  )
-
-  // 复制现有数据
-  mapData.value.forEach((row, y) => {
-    if (y < height.value) {
-      row.forEach((cell, x) => {
-        if (x < width.value) {
-          newMap[y][x] = { ...cell }
-        }
-      })
-    }
-  })
-
-  mapData.value = newMap
-
-  // 清理超出范围的对象
-  const cleanPositions = (positions) => {
-    return positions.filter(pos =>
-      pos.x < width.value && pos.y < height.value
+  levels.value.forEach(level => {
+    const newMap = Array(height.value).fill().map(() =>
+      Array(width.value).fill().map(() => ({ walkable: true }))
     )
-  }
 
-  blueGems.value = cleanPositions(blueGems.value)
-  redGems.value = cleanPositions(redGems.value)
-  monsters.value = cleanPositions(monsters.value)
+    // 复制现有数据
+    level.mapData.forEach((row, y) => {
+      if (y < height.value) {
+        row.forEach((cell, x) => {
+          if (x < width.value) {
+            newMap[y][x] = { ...cell }
+          }
+        })
+      }
+    })
+
+    level.mapData = newMap
+
+    // 清理超出范围的对象
+    const cleanPositions = (positions) => {
+      return positions.filter(pos =>
+        pos.x < width.value && pos.y < height.value
+      )
+    }
+
+    level.blueGems = cleanPositions(level.blueGems)
+    level.redGems = cleanPositions(level.redGems)
+    level.monsters = cleanPositions(level.monsters)
+  })
 
   if (startPos.value && (startPos.value.x >= width.value || startPos.value.y >= height.value)) {
     startPos.value = null
@@ -264,20 +363,22 @@ const gridStyle = computed(() => ({
 
 // 获取单元格的类名
 const getCellClasses = (x, y) => {
+  const level = levels.value[currentLevel.value]
   const classes = {
-    'wall': !mapData.value[y][x].walkable,
-    'blue-gem': blueGems.value.some(g => g.x === x && g.y === y),
-    'red-gem': redGems.value.some(g => g.x === x && g.y === y),
-    'monster': monsters.value.some(m => m.x === x && m.y === y),
-    'start': startPos.value && startPos.value.x === x && startPos.value.y === y,
-    'exit': exitPos.value && exitPos.value.x === x && exitPos.value.y === y,
-    'teleport-gate': teleportGates.value.some(t => t.some(g => g.x === x && g.y === y)),
-    'teleport-gate-0': teleportGateState.value === 1 && teleportGate0.value.x === x && teleportGate0.value.y === y,
+    'wall': !level.mapData[y][x].walkable,
+    'blue-gem': level.blueGems.some(g => g.x === x && g.y === y),
+    'red-gem': level.redGems.some(g => g.x === x && g.y === y),
+    'monster': level.monsters.some(m => m.x === x && m.y === y),
+    'start': startPos.value && startPos.value.x === x && startPos.value.y === y && startPos.value.level === currentLevel.value,
+    'exit': exitPos.value && exitPos.value.x === x && exitPos.value.y === y && exitPos.value.level === currentLevel.value,
+    'teleport-gate': teleportGates.value.some(t => t.some(g => g.x === x && g.y === y && g.level === currentLevel.value)),
+    'teleport-gate-0': teleportGateState.value === 1 && teleportGate0.value && teleportGate0.value.x === x && teleportGate0.value.y === y && teleportGate0.value.level === currentLevel.value,
   }
   return classes
 }
+
 const teleportGateStyle = (x, y) => {
-  const index = teleportGates.value.findIndex(t => t.some(g => g.x === x && g.y === y))
+  const index = teleportGates.value.findIndex(t => t.some(g => g.x === x && g.y === y && g.level === currentLevel.value))
   if (index !== -1) {
     let color = index * 50 % 360
     return {
@@ -287,14 +388,17 @@ const teleportGateStyle = (x, y) => {
     return {}
   }
 }
-let teleportGateState = ref(0);
-let teleportGate0 = { x: 0, y: 0 };
+
+const teleportGateState = ref(0);
+const teleportGate0 = ref(null);
 
 watch(currentTool, (newVal) => {
   if (newVal !== 'teleport') {
     teleportGateState.value = 0
+    teleportGate0.value = null
   }
 })
+
 const handleCellDown = (x, y) => {
   isDrawing.value = true
   handleCellModification(x, y)
@@ -311,54 +415,59 @@ const handleCellHover = (x, y) => {
 
 // 处理单元格修改
 const handleCellModification = (x, y) => {
-  console.log(currentTool.value)
+  const level = levels.value[currentLevel.value]
+  
   switch (currentTool.value) {
     case 'wall':
-      mapData.value[y][x].walkable = false
+      level.mapData[y][x].walkable = false
       break
     case 'eraser':
-      mapData.value[y][x].walkable = true
+      level.mapData[y][x].walkable = true
       removeAllAtPosition(x, y)
       break
     case 'blueGem':
-      if (mapData.value[y][x].walkable) {
+      if (level.mapData[y][x].walkable) {
         removeAllAtPosition(x, y)
-        blueGems.value.push({ x, y })
+        level.blueGems.push({ x, y })
       }
       break
     case 'redGem':
-      if (mapData.value[y][x].walkable) {
+      if (level.mapData[y][x].walkable) {
         removeAllAtPosition(x, y)
-        redGems.value.push({ x, y })
+        level.redGems.push({ x, y })
       }
       break
     case 'monster':
-      if (mapData.value[y][x].walkable) {
+      if (level.mapData[y][x].walkable) {
         removeAllAtPosition(x, y)
-        monsters.value.push({ x, y })
+        level.monsters.push({ x, y })
       }
       break
     case 'start':
-      if (mapData.value[y][x].walkable) {
+      if (level.mapData[y][x].walkable) {
         removeAllAtPosition(x, y)
-        startPos.value = { x, y }
+        startPos.value = { x, y, level: currentLevel.value }
       }
       break
     case 'exit':
-      if (mapData.value[y][x].walkable) {
+      if (level.mapData[y][x].walkable) {
         removeAllAtPosition(x, y)
-        exitPos.value = { x, y }
+        exitPos.value = { x, y, level: currentLevel.value }
       }
       break
     case 'teleport':
-      if (mapData.value[y][x].walkable) {
+      if (level.mapData[y][x].walkable) {
         removeAllAtPosition(x, y)
         if (teleportGateState.value === 0) {
-          teleportGate0.value = { x, y }
+          teleportGate0.value = { x, y, level: currentLevel.value }
           teleportGateState.value = 1
-        } else {
-          teleportGates.value.push([teleportGate0.value, { x, y }])
+        } else if (teleportGate0.value) {
+          teleportGates.value.push([
+            { ...teleportGate0.value },
+            { x, y, level: currentLevel.value }
+          ])
           teleportGateState.value = 0
+          teleportGate0.value = null
         }
       }
       break
@@ -367,21 +476,33 @@ const handleCellModification = (x, y) => {
 
 // 移除指定位置的所有对象
 const removeAllAtPosition = (x, y) => {
-  blueGems.value = blueGems.value.filter(g => g.x !== x || g.y !== y)
-  redGems.value = redGems.value.filter(g => g.x !== x || g.y !== y)
-  monsters.value = monsters.value.filter(m => m.x !== x || m.y !== y)
-  if (startPos.value && startPos.value.x === x && startPos.value.y === y) {
+  const level = levels.value[currentLevel.value]
+  
+  level.blueGems = level.blueGems.filter(g => g.x !== x || g.y !== y)
+  level.redGems = level.redGems.filter(g => g.x !== x || g.y !== y)
+  level.monsters = level.monsters.filter(m => m.x !== x || m.y !== y)
+  
+  if (startPos.value && 
+      startPos.value.x === x && 
+      startPos.value.y === y && 
+      startPos.value.level === currentLevel.value) {
     startPos.value = null
   }
-  if (exitPos.value && exitPos.value.x === x && exitPos.value.y === y) {
+  
+  if (exitPos.value && 
+      exitPos.value.x === x && 
+      exitPos.value.y === y && 
+      exitPos.value.level === currentLevel.value) {
     exitPos.value = null
   }
-  teleportGates.value = teleportGates.value.filter(t => !t.some(g => g.x === x && g.y === y))
+  
+  teleportGates.value = teleportGates.value.filter(t => 
+    !t.some(g => g.x === x && g.y === y && g.level === currentLevel.value)
+  )
 }
 
 // 初始化
 initMap()
-
 
 </script>
 
@@ -542,5 +663,18 @@ initMap()
 
 .gem-icon.blue {
   background-position: -14px 0;
+}
+
+.level-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.level-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 </style>

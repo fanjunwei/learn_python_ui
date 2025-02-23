@@ -11,6 +11,9 @@
           <span>{{ gameState.collectedRedGems }}/{{ gameState.requiredRedGems }}</span>
         </div>
       </div>
+      <div class="level-info">
+        当前层级: {{ gameState.currentLevel + 1 }}
+      </div>
       <div class="exit-status">
         出口状态: <span>{{ gameState.exitOpen ? '开启' : '关闭' }}</span>
       </div>
@@ -81,12 +84,13 @@ const ipcRenderer = electron.ipcRenderer
 // 游戏状态
 const gameState = ref({
   maze: [],
-  playerPosition: { x: 0, y: 0 },
+  playerPosition: { x: 0, y: 0, level: 0 },
+  currentLevel: 0,
   playerDirection: 0,
   blueGems: [],
   redGems: [],
   monsters: [],
-  exit: { x: 0, y: 0 },
+  exit: { x: 0, y: 0, level: 0 },
   exitOpen: false,
   collectedBlueGems: 0,
   collectedRedGems: 0,
@@ -96,6 +100,7 @@ const gameState = ref({
   success: false,
   onGemType: 'none',
   autoCollect: false,
+  teleportGates: []
 })
 
 // 计算属性
@@ -118,28 +123,40 @@ const playerClass = computed(() => ({
 
 // 辅助函数
 const isPlayerPosition = (x, y) => {
-  return x === gameState.value.playerPosition.x && y === gameState.value.playerPosition.y
+  return x === gameState.value.playerPosition.x && 
+         y === gameState.value.playerPosition.y &&
+         gameState.value.currentLevel === gameState.value.playerPosition.level
 }
 
 const hasBluGem = (x, y) => {
-  return gameState.value.blueGems.some(g => g.x === x && g.y === y)
+  return gameState.value.blueGems.some(g => 
+    g.x === x && g.y === y && g.level === gameState.value.currentLevel
+  )
 }
 
 const hasRedGem = (x, y) => {
-  return gameState.value.redGems.some(g => g.x === x && g.y === y)
+  return gameState.value.redGems.some(g => 
+    g.x === x && g.y === y && g.level === gameState.value.currentLevel
+  )
 }
 
 const hasMonster = (x, y) => {
-  return gameState.value.monsters.some(m => m.x === x && m.y === y)
+  return gameState.value.monsters.some(m => 
+    m.x === x && m.y === y && m.level === gameState.value.currentLevel
+  )
 }
 
 const isExit = (x, y) => {
-  return x === gameState.value.exit.x && y === gameState.value.exit.y
+  return x === gameState.value.exit.x && 
+         y === gameState.value.exit.y && 
+         gameState.value.currentLevel === gameState.value.exit.level
 }
 
 const isTeleportGate = (x, y) => {
   if (gameState.value.teleportGates) {
-    return gameState.value.teleportGates.some(t => t.some(g => g.x === x && g.y === y))
+    return gameState.value.teleportGates.some(t => 
+      t.some(g => g.x === x && g.y === y && g.level === gameState.value.currentLevel)
+    )
   }
   return false
 }
@@ -470,5 +487,12 @@ onUnmounted(() => {
   to {
     transform: rotate(360deg);
   }
+}
+
+.level-info {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  padding: 0 20px;
 }
 </style>
