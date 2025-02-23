@@ -170,7 +170,7 @@ function createWindow() {
   }
 
   // 注册快捷键
-  registerShortcuts();
+  // registerShortcuts();
 
   // 监听窗口关闭事件
   mainWindow.on('closed', async () => {

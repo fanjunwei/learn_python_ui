@@ -109,6 +109,10 @@ let teleportEndPosition = new THREE.Vector3()
 let teleportProgress = 0
 const teleportDuration = 2.0
 
+// 添加层级高度常量
+const LEVEL_HEIGHT = 5 // 每层迷宫之间的高度差
+const WALL_HEIGHT = 1 // 墙壁高度
+
 // 加载GLB模型
 const loadPlayerModel = async () => {
   const loader = new GLTFLoader()
@@ -389,7 +393,9 @@ const initThreeJS = async () => {
 
       if (t <= 0.5) { // 渐隐阶段
         const fadeOutT = t / 0.5
-        playerModel.position.y = - fadeOutT * 0.5
+        // 从当前层级高度渐变消失
+        const currentLevelY = gameState.value.teleportStartPosition.level * LEVEL_HEIGHT
+        playerModel.position.y = currentLevelY - fadeOutT * 0.5
         playerModel.traverse((node) => {
           if (node.isMesh) {
             node.material.transparent = true
@@ -400,7 +406,9 @@ const initThreeJS = async () => {
         const fadeInT = (t - 0.5) / 0.5
         playerModel.visible = true
         playerModel.position.copy(teleportEndPosition)
-        playerModel.position.y = fadeInT * 0.5 - 0.5
+        // 在目标层级高度渐变出现
+        const targetLevelY = gameState.value.playerPosition.level * LEVEL_HEIGHT
+        playerModel.position.y = targetLevelY + fadeInT * 0.5 - 0.5
         playerModel.traverse((node) => {
           if (node.isMesh) {
             node.material.transparent = true
@@ -459,13 +467,13 @@ const updateScene = () => {
   })
 
   // 处理游戏结束时的渐隐效果
-  let playerPositionY = 0
+  let playerPositionY = gameState.value.currentLevel * LEVEL_HEIGHT
   if (gameState.value.gameOver) {
     if (!gameState.value.success) {
       playerFadeOutProgress = 0
     } else {
       animationProgress = 0
-      playerPositionY = 0.05
+      playerPositionY += 0.05
     }
   }
 
@@ -478,7 +486,6 @@ const updateScene = () => {
   targetPlayerRotation = -gameState.value.playerDirection * Math.PI / 2 + Math.PI
 
   if (gameState.value.action !== 'teleport') {
-    // 如果是第一次设置位置，直接设置而不是动画
     if (gameState.value.action === 'reset') {
       switchAnimation('Idle')
       currentPlayerPosition.copy(targetPlayerPosition)
@@ -486,66 +493,70 @@ const updateScene = () => {
       currentPlayerRotation = targetPlayerRotation
       playerModel.rotation.y = targetPlayerRotation
     } else {
-      // 开始新的动画
       currentPlayerPosition.copy(playerModel.position)
       currentPlayerRotation = playerModel.rotation.y
-      console.log("action", gameState.value.action)
       animationProgress = 0
     }
   } else {
     // 处理传送门动画
     teleportEndPosition.set(
       gameState.value.playerPosition.x - gameState.value.maze[0].length / 2,
-      0,
+      gameState.value.currentLevel * LEVEL_HEIGHT,
       gameState.value.playerPosition.y - gameState.value.maze.length / 2
     )
+    // 记录传送起始位置
+    if (!isTeleporting) {
+      gameState.value.teleportStartPosition = {
+        x: gameState.value.playerPosition.x,
+        y: gameState.value.playerPosition.y,
+        level: gameState.value.currentLevel
+      }
+    }
     isTeleporting = true
     teleportProgress = 0
     switchAnimation('Idle')
   }
 
   if (gameState.value.action === 'reset') {
-    // 清理并创建传送门
+    // 清理并重建所有层级的场景对象
+    
+    // 清理传送门
     teleportGateMeshes.forEach(gate => {
       disposeObject(gate)
       scene.remove(gate)
     })
     teleportGateMeshes = []
 
+    // 创建传送门
     if (gameState.value.teleportGates && teleportGateModel) {
       gameState.value.teleportGates.forEach((gate, index) => {
         gate.forEach(pos => {
-          if (pos.level === gameState.value.currentLevel) {
-            const gateModel = SkeletonUtils.clone(teleportGateModel)
-            // 使用与2D视图相同的颜色生成算法
-            const hue = (index * 50) % 360
-            const color = new THREE.Color().setHSL(hue / 360, 0.7, 0.5)
+          const gateModel = SkeletonUtils.clone(teleportGateModel)
+          const hue = (index * 50) % 360
+          const color = new THREE.Color().setHSL(hue / 360, 0.7, 0.5)
 
-            // 为模型的所有材质设置颜色
-            gateModel.traverse((node) => {
-              if (node.isMesh) {
-                node.material = node.material.clone() // 克隆材质以避免共享
-                node.material.color = color
-                node.material.emissive = color
-                node.material.emissiveIntensity = 2.0
-                // 调整材质参数以增强视觉效果
-                if (node.material.metalness !== undefined) {
-                  node.material.metalness = 0.8
-                }
-                if (node.material.roughness !== undefined) {
-                  node.material.roughness = 0.2
-                }
+          gateModel.traverse((node) => {
+            if (node.isMesh) {
+              node.material = node.material.clone()
+              node.material.color = color
+              node.material.emissive = color
+              node.material.emissiveIntensity = 2.0
+              if (node.material.metalness !== undefined) {
+                node.material.metalness = 0.8
               }
-            })
+              if (node.material.roughness !== undefined) {
+                node.material.roughness = 0.2
+              }
+            }
+          })
 
-            gateModel.position.set(
-              pos.x - gameState.value.maze[0].length / 2,
-              0,
-              pos.y - gameState.value.maze.length / 2
-            )
-            scene.add(gateModel)
-            teleportGateMeshes.push(gateModel)
-          }
+          gateModel.position.set(
+            pos.x - gameState.value.maze[0].length / 2,
+            pos.level * LEVEL_HEIGHT,
+            pos.y - gameState.value.maze.length / 2
+          )
+          scene.add(gateModel)
+          teleportGateMeshes.push(gateModel)
         })
       })
     }
@@ -555,43 +566,73 @@ const updateScene = () => {
       disposeObject(wall)
       scene.remove(wall)
     })
-    if (exitMesh) {
-      disposeObject(exitMesh)
-      scene.remove(exitMesh)
-    }
-
     walls = []
 
-    // 创建墙壁
-    const wallGeometry = new THREE.BoxGeometry(0.99, 0.99, 0.99)
-    const wallMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xffffb5,
-      metalness: 0.9,
-      roughness: 0.1,
-      envMapIntensity: 1.5,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.1,
-      reflectivity: 1.0
-    })
+    // 为每一层创建墙壁和地板
+    gameState.value.levels.forEach((level, levelIndex) => {
+      const levelY = levelIndex * LEVEL_HEIGHT
+      const wallGeometry = new THREE.BoxGeometry(0.99, WALL_HEIGHT, 0.99)
+      const wallMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xffffb5,
+        metalness: 0.9,
+        roughness: 0.1,
+        envMapIntensity: 1.5,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1,
+        reflectivity: 1.0
+      })
 
-    gameState.value.maze.forEach((row, y) => {
-      row.forEach((cell, x) => {
-        if (cell.walkable) {
-          const wall = new THREE.Mesh(wallGeometry, wallMaterial)
-          wall.position.set(x - gameState.value.maze[0].length / 2, -0.5, y - gameState.value.maze.length / 2)
-          wall.receiveShadow = true
-          scene.add(wall)
-          walls.push(wall)
-        }
+      // 创建地板
+      const floorGeometry = new THREE.BoxGeometry(
+        level.maze[0].length,
+        0.1,
+        level.maze.length
+      )
+      const floorMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xcccccc,
+        metalness: 0.5,
+        roughness: 0.5,
+        transparent: true,
+        opacity: 0.8
+      })
+      const floor = new THREE.Mesh(floorGeometry, floorMaterial)
+      floor.position.set(0, levelY - 0.05, 0)
+      floor.receiveShadow = true
+      scene.add(floor)
+      walls.push(floor)
+
+      // 创建墙壁
+      level.maze.forEach((row, z) => {
+        row.forEach((cell, x) => {
+          if (!cell.walkable) {
+            const wall = new THREE.Mesh(wallGeometry, wallMaterial)
+            wall.position.set(
+              x - level.maze[0].length / 2,
+              levelY + WALL_HEIGHT / 2,
+              z - level.maze.length / 2
+            )
+            wall.castShadow = true
+            wall.receiveShadow = true
+            scene.add(wall)
+            walls.push(wall)
+          }
+        })
       })
     })
 
-    // 创建宝石
+    // 清理并重建宝石
     blueGemMeshes.forEach(gem => {
       disposeObject(gem)
       scene.remove(gem)
     })
+    redGemMeshes.forEach(gem => {
+      disposeObject(gem)
+      scene.remove(gem)
+    })
     blueGemMeshes = []
+    redGemMeshes = []
+
+    // 创建宝石
     const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
     const blueGemMaterial = new THREE.MeshPhysicalMaterial({
       color: 0x0000ff,
@@ -603,24 +644,6 @@ const updateScene = () => {
       clearcoat: 1.0,
       clearcoatRoughness: 0.1
     })
-    gameState.value.blueGems.forEach((gem, index) => {
-      if (gem.level === gameState.value.currentLevel) {
-        const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
-        blueMesh.position.set(
-          gem.x - gameState.value.maze[0].length / 2,
-          0.5,
-          gem.y - gameState.value.maze.length / 2
-        )
-        scene.add(blueMesh)
-        blueGemMeshes.push(blueMesh)
-      }
-    })
-
-    redGemMeshes.forEach(gem => {
-      disposeObject(gem)
-      scene.remove(gem)
-    })
-    redGemMeshes = []
     const redGemMaterial = new THREE.MeshPhysicalMaterial({
       color: 0xff0000,
       metalness: 0.9,
@@ -631,20 +654,34 @@ const updateScene = () => {
       clearcoat: 1.0,
       clearcoatRoughness: 0.1
     })
-    gameState.value.redGems.forEach((gem, index) => {
-      if (gem.level === gameState.value.currentLevel) {
+
+    // 在每一层放置宝石
+    gameState.value.levels.forEach((level, levelIndex) => {
+      const levelY = levelIndex * LEVEL_HEIGHT
+      level.blueGems.forEach(gem => {
+        const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
+        blueMesh.position.set(
+          gem.x - level.maze[0].length / 2,
+          levelY + 0.5,
+          gem.y - level.maze.length / 2
+        )
+        scene.add(blueMesh)
+        blueGemMeshes.push(blueMesh)
+      })
+
+      level.redGems.forEach(gem => {
         const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
         redMesh.position.set(
-          gem.x - gameState.value.maze[0].length / 2,
-          0.5,
-          gem.y - gameState.value.maze.length / 2
+          gem.x - level.maze[0].length / 2,
+          levelY + 0.5,
+          gem.y - level.maze.length / 2
         )
         scene.add(redMesh)
         redGemMeshes.push(redMesh)
-      }
+      })
     })
 
-    // 创建怪物
+    // 清理并重建怪物
     monsterMeshes.forEach(monster => {
       if (monster.userData.mixer) {
         monster.userData.mixer.stopAllAction()
@@ -655,36 +692,44 @@ const updateScene = () => {
     })
     monsterMeshes = []
 
-    gameState.value.monsters.forEach((monster, index) => {
-      if (monster.level === gameState.value.currentLevel && monsterModel) {
-        const newMonsterModel = SkeletonUtils.clone(monsterModel)
-        newMonsterModel.scale.copy(monsterModel.scale)
-        newMonsterModel.position.set(
-          monster.x - gameState.value.maze[0].length / 2,
-          monsterModel.position.y,
-          monster.y - gameState.value.maze.length / 2
-        )
-        newMonsterModel.rotation.y = (monster.x + monster.y) * Math.PI * 0.2
+    // 在每一层放置怪物
+    gameState.value.levels.forEach((level, levelIndex) => {
+      const levelY = levelIndex * LEVEL_HEIGHT
+      level.monsters.forEach((monster, index) => {
+        if (monsterModel) {
+          const newMonsterModel = SkeletonUtils.clone(monsterModel)
+          newMonsterModel.scale.copy(monsterModel.scale)
+          newMonsterModel.position.set(
+            monster.x - level.maze[0].length / 2,
+            levelY,
+            monster.y - level.maze.length / 2
+          )
+          newMonsterModel.rotation.y = (monster.x + monster.y) * Math.PI * 0.2
 
-        const mixer = new THREE.AnimationMixer(newMonsterModel)
-        newMonsterModel.userData.mixer = mixer
+          const mixer = new THREE.AnimationMixer(newMonsterModel)
+          newMonsterModel.userData.mixer = mixer
 
-        Object.entries(monsterAnimations).forEach(([name, originalAction]) => {
-          const clip = originalAction.getClip()
-          const action = mixer.clipAction(clip)
-          if (name === 'Idle') {
-            action.time = index * 2
-            action.play()
-          }
-        })
+          Object.entries(monsterAnimations).forEach(([name, originalAction]) => {
+            const clip = originalAction.getClip()
+            const action = mixer.clipAction(clip)
+            if (name === 'Idle') {
+              action.time = index * 2
+              action.play()
+            }
+          })
 
-        scene.add(newMonsterModel)
-        monsterMeshes.push(newMonsterModel)
-      }
+          scene.add(newMonsterModel)
+          monsterMeshes.push(newMonsterModel)
+        }
+      })
     })
 
     // 创建出口
-    if (gameState.value.exit.level === gameState.value.currentLevel) {
+    if (exitMesh) {
+      disposeObject(exitMesh)
+      scene.remove(exitMesh)
+    }
+    if (gameState.value.exit) {
       const exitGeometry = new THREE.BoxGeometry(1, 0.05, 1)
       const exitMaterial = new THREE.MeshPhysicalMaterial({
         color: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
@@ -701,11 +746,17 @@ const updateScene = () => {
       exitMesh = new THREE.Mesh(exitGeometry, exitMaterial)
       exitMesh.position.set(
         gameState.value.exit.x - gameState.value.maze[0].length / 2,
-        0.05,
+        gameState.value.exit.level * LEVEL_HEIGHT + 0.05,
         gameState.value.exit.y - gameState.value.maze.length / 2
       )
       scene.add(exitMesh)
     }
+
+    // 调整相机位置以适应多层迷宫
+    const totalHeight = (gameState.value.levels.length - 1) * LEVEL_HEIGHT
+    camera.position.set(5, totalHeight + 5, 5)
+    controls.target.set(0, totalHeight / 2, 0)
+    controls.update()
   }
 }
 
