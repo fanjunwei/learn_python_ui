@@ -814,7 +814,7 @@ const handleRenderGameState = (event, state) => {
     gameState.value = state
     
     // 当层级变化时，更新相机位置
-    if (state.action === 'teleport' && oldLevel !== state.currentLevel) {
+    if (oldLevel !== state.currentLevel) {
       const targetY = state.currentLevel * LEVEL_HEIGHT
       const cameraHeight = 8 // 相机高度偏移
       
