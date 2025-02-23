@@ -93,7 +93,7 @@ const gameState = ref({
 // Three.js 相关变量
 const container = ref(null)
 let scene, camera, renderer, controls
-let playerModel, playerMixer, playerAnimations = {}, monsterModel, monsterMixer, monsterAnimations = {}, walls = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh, teleportGateMeshes = [], teleportGateModel = null
+let playerModel, playerMixer, playerAnimations = {}, monsterModel, monsterMixer, monsterAnimations = {}, floorTiles = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh, teleportGateMeshes = [], teleportGateModel = null
 let init = false
 let clock = null
 let targetPlayerPosition = new THREE.Vector3()
@@ -111,7 +111,7 @@ const teleportDuration = 2.0
 
 // 添加层级高度常量
 const LEVEL_HEIGHT = 5 // 每层迷宫之间的高度差
-const WALL_HEIGHT = 1 // 墙壁高度
+const FLOOR_TILE_HEIGHT = 1 // 地砖高度
 
 // 加载GLB模型
 const loadPlayerModel = async () => {
@@ -562,17 +562,17 @@ const updateScene = () => {
     }
 
     // 清理旧的物体
-    walls.forEach(wall => {
-      disposeObject(wall)
-      scene.remove(wall)
+    floorTiles.forEach(floorTile => {
+      disposeObject(floorTile)
+      scene.remove(floorTile)
     })
-    walls = []
+    floorTiles = []
 
-    // 为每一层创建墙壁和地板
+    // 为每一层创建地砖
     gameState.value.levels.forEach((level, levelIndex) => {
       const levelY = levelIndex * LEVEL_HEIGHT
-      const wallGeometry = new THREE.BoxGeometry(0.99, WALL_HEIGHT, 0.99)
-      const wallMaterial = new THREE.MeshPhysicalMaterial({
+      const floorTileGeometry = new THREE.BoxGeometry(0.99, FLOOR_TILE_HEIGHT, 0.99)
+      const floorTileMaterial = new THREE.MeshPhysicalMaterial({
         color: 0xffffb5,
         metalness: 0.9,
         roughness: 0.1,
@@ -582,39 +582,20 @@ const updateScene = () => {
         reflectivity: 1.0
       })
 
-      // 创建地板
-      const floorGeometry = new THREE.BoxGeometry(
-        level.maze[0].length,
-        0.1,
-        level.maze.length
-      )
-      const floorMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xcccccc,
-        metalness: 0.5,
-        roughness: 0.5,
-        transparent: true,
-        opacity: 0.8
-      })
-      const floor = new THREE.Mesh(floorGeometry, floorMaterial)
-      floor.position.set(0, levelY - 0.05, 0)
-      floor.receiveShadow = true
-      scene.add(floor)
-      walls.push(floor)
-
-      // 创建墙壁
+      // 创建地砖
       level.maze.forEach((row, z) => {
         row.forEach((cell, x) => {
-          if (!cell.walkable) {
-            const wall = new THREE.Mesh(wallGeometry, wallMaterial)
-            wall.position.set(
+          if (cell.walkable) {
+            const floorTile = new THREE.Mesh(floorTileGeometry, floorTileMaterial)
+            floorTile.position.set(
               x - level.maze[0].length / 2,
-              levelY + WALL_HEIGHT / 2,
+              levelY - FLOOR_TILE_HEIGHT / 2,
               z - level.maze.length / 2
             )
-            wall.castShadow = true
-            wall.receiveShadow = true
-            scene.add(wall)
-            walls.push(wall)
+            floorTile.castShadow = true
+            floorTile.receiveShadow = true
+            scene.add(floorTile)
+            floorTiles.push(floorTile)
           }
         })
       })
@@ -894,9 +875,9 @@ onUnmounted(() => {
     scene.clear()
   }
 
-  // 清理墙壁
-  walls.forEach(wall => disposeObject(wall))
-  walls = []
+  // 清理地砖
+  floorTiles.forEach(floorTile => disposeObject(floorTile))
+  floorTiles = []
 
   // 清理宝石
   blueGemMeshes.forEach(gem => disposeObject(gem))
