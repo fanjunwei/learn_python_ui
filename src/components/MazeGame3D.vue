@@ -338,7 +338,7 @@ const initThreeJS = async () => {
             switchAnimation('Idle')
           }
         } else if (gameState.value.gameOver && gameState.value.success) {
-          switchAnimation('Jump')
+          switchAnimation('Dance')
         } else {
           switchAnimation('Idle')
         }
@@ -456,14 +456,20 @@ const updateScene = () => {
   })
 
   // 处理游戏结束时的渐隐效果
-  if (gameState.value.gameOver && !gameState.value.success) {
-    playerFadeOutProgress = 0
+  let playerPositionY = 0
+  if (gameState.value.gameOver) {
+    if (!gameState.value.success) {
+      playerFadeOutProgress = 0
+    } else {
+      animationProgress = 0
+      playerPositionY = 0.05
+    }
   }
 
   // 设置目标位置和旋转
   targetPlayerPosition.set(
     gameState.value.playerPosition.x - gameState.value.maze[0].length / 2,
-    0,
+    playerPositionY,
     gameState.value.playerPosition.y - gameState.value.maze.length / 2
   )
   targetPlayerRotation = -gameState.value.playerDirection * Math.PI / 2 + Math.PI
@@ -480,6 +486,7 @@ const updateScene = () => {
       // 开始新的动画
       currentPlayerPosition.copy(playerModel.position)
       currentPlayerRotation = playerModel.rotation.y
+      console.log("action", gameState.value.action)
       animationProgress = 0
     }
   } else {
@@ -509,7 +516,7 @@ const updateScene = () => {
           // 使用与2D视图相同的颜色生成算法
           const hue = (index * 50) % 360
           const color = new THREE.Color().setHSL(hue / 360, 0.7, 0.5)
-          
+
           // 为模型的所有材质设置颜色
           gateModel.traverse((node) => {
             if (node.isMesh) {
@@ -793,18 +800,9 @@ const initGame = async () => {
 // 事件处理函数
 const handleRenderGameState = (event, state) => {
   console.log('3D收到游戏状态更新:', state)
-  if (state && state.maze) {
-    console.log('迷宫数据:', state.maze)
-    gameState.value = state
-  } else {
-    console.warn('收到无效的游戏状态:', state)
-  }
-}
-
-// 监听游戏状态变化
-watch(() => gameState.value, (newState) => {
+  gameState.value = state
   updateScene()
-}, { deep: true })
+}
 
 // 组件挂载
 onMounted(async () => {

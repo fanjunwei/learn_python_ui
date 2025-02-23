@@ -243,10 +243,8 @@ app.post('/move', async (req, res) => {
       mainWindow.webContents.send('playAudio', 'error');
     }
   }
-  if (result.success) {
-    renderState.action = action
-    mainWindow.webContents.send('renderGameState', renderState);
-  }
+  renderState.action = action
+  mainWindow.webContents.send('renderGameState', renderState);
   if (result.message) {
     let type = 'success'
     if (!result.success) {
@@ -397,40 +395,42 @@ function checkCollisions(result, operate) {
     gameState.gameOver = true;
     gameState.success = false;
   }
+  if (operate === 'forward') {
 
-  // 检查传送门
-  let teleportGate = null;
-  // 检查是否在传送门上, 传送门是两个点, 如果角色在一个点上, 则传送到另一个点上
-  gameState.teleportGates.some(t => {
-    return t.some(g => {
-      if (t.length === 2) {
-        const isOnGate = (gate, otherGate) => {
-          let check = gate.x === pos.x && gate.y === pos.y;
-          if (check) {
-            return otherGate;
+    // 检查传送门
+    let teleportGate = null;
+    // 检查是否在传送门上, 传送门是两个点, 如果角色在一个点上, 则传送到另一个点上
+    gameState.teleportGates.some(t => {
+      return t.some(g => {
+        if (t.length === 2) {
+          const isOnGate = (gate, otherGate) => {
+            let check = gate.x === pos.x && gate.y === pos.y;
+            if (check) {
+              return otherGate;
+            }
+            return null;
           }
-          return null;
+          teleportGate = isOnGate(t[0], t[1]) || isOnGate(t[1], t[0]);
+          return !!teleportGate;
         }
-        teleportGate = isOnGate(t[0], t[1]) || isOnGate(t[1], t[0]);
-        return !!teleportGate;
-      }
-      return false;
+        return false;
+      })
     })
-  })
-  if (teleportGate) {
-    let timeout = 2000;
-    timeout = timeout * (100 - speed) / 100;
-    gameState.onTeleport = true;
-    setTimeout(() => {
-      if (teleportGate) {
-        gameState.onTeleport = false;
-        gameState.teleportStartPosition = gameState.playerPosition;
-        gameState.playerPosition = teleportGate;
-        gameState.action = 'teleport';
-        mainWindow.webContents.send('playAudio', 'teleport');
-        mainWindow.webContents.send('renderGameState', generateRenderState());
-      }
-    }, timeout);
+    if (teleportGate) {
+      let timeout = 2000;
+      timeout = timeout * (100 - speed) / 100;
+      gameState.onTeleport = true;
+      setTimeout(() => {
+        if (teleportGate) {
+          gameState.onTeleport = false;
+          gameState.teleportStartPosition = gameState.playerPosition;
+          gameState.playerPosition = teleportGate;
+          gameState.action = 'teleport';
+          mainWindow.webContents.send('playAudio', 'teleport');
+          mainWindow.webContents.send('renderGameState', generateRenderState());
+        }
+      }, timeout);
+    }
   }
 
   // 检查是否开启出口
