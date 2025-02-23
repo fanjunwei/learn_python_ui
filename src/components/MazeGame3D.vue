@@ -101,7 +101,6 @@ const playerFadeOutDuration = 1.0
 let playerFadeOutProgress = playerFadeOutDuration
 let currentAnimation = null
 let isTeleporting = false
-let teleportStartPosition = new THREE.Vector3()
 let teleportEndPosition = new THREE.Vector3()
 let teleportProgress = 0
 const teleportDuration = 2.0
@@ -490,10 +489,9 @@ const updateScene = () => {
       animationProgress = 0
     }
   } else {
-    teleportStartPosition.copy(gameState.value.teleportStartPosition)
     teleportEndPosition.set(
       gameState.value.playerPosition.x - gameState.value.maze[0].length / 2,
-      0.5,
+      0,
       gameState.value.playerPosition.y - gameState.value.maze.length / 2
     )
     isTeleporting = true
