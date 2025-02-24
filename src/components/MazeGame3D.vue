@@ -241,7 +241,7 @@ const initThreeJS = async () => {
   renderer.setSize(container.value.clientWidth, container.value.clientHeight)
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1
-  renderer.outputEncoding = THREE.sRGBEncoding
+  renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.physicallyCorrectLights = true
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap

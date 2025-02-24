@@ -11,6 +11,28 @@
     "electron:build": "vite build && electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
+  "build": {
+    "appId": "com.fjw.maze_game",
+    "productName": "Learn Python - 迷宫游戏",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "server.js",
+      "package.json"
+    ],
+    "mac": {
+      "target": ["dmg"]
+    },
+    "win": {
+      "target": ["nsis"]
+    },
+    "linux": {
+      "target": ["AppImage"]
+    }
+  },
   "keywords": [
     "maze",
     "game",
