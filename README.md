@@ -1,126 +1,126 @@
-# Python 迷宫游戏 - 青少年编程学习工具
+# Python Maze Game - Programming Learning Tool for Youth
 
-这是一个专门为青少年学习Python编程而设计的3D+2D迷宫游戏。通过编写Python代码来控制游戏角色的移动，学习者可以在实践中掌握Python编程的基础知识。
+A 3D+2D maze game designed specifically for young people to learn Python programming. By writing Python code to control game character movement, learners can master basic Python programming concepts through hands-on practice.
 
-## 应用截图
+## Application Screenshots
 
-### 3D游戏界面
-![3D游戏界面](res/image001.png)
+### 3D Game Interface
+![3D Game Interface](res/image001.png)
 
-### 2D游戏界面
-![2D游戏界面](res/image002.png)
+### 2D Game Interface
+![2D Game Interface](res/image002.png)
 
-### 地图编辑器
-![地图编辑器](res/image003.png)
+### Map Editor
+![Map Editor](res/image003.png)
 
-## 功能特点
+## Features
 
-- 3D迷宫环境（也支持2D迷宫），支持多层迷宫结构
-- 通过Python代码控制角色移动
-- 收集宝石（蓝宝石和红宝石）
-- 躲避怪物
-- 使用传送门在不同格子或不同层之间移动
-- 内置地图编辑器，可以创建自定义迷宫
+- 3D maze environment (also supports 2D maze) with multi-level maze structure
+- Control character movement through Python code
+- Collect gems (blue and red gems)
+- Avoid monsters
+- Use teleport gates to move between different cells or levels
+- Built-in map editor for creating custom mazes
 
-## 安装说明
+## Installation
 
-1. 确保你的电脑已安装Python 3.6或更高版本
-2. 安装游戏所需的Python依赖：
+1. Ensure Python 3.6 or higher is installed on your computer
+2. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-## 运行游戏
+## Running the Game
 
-1. 安装依赖
+1. Install dependencies
 ```bash
 npm install
 ```
-2. 启动游戏客户端：
+2. Start the game client:
 ```bash
 npm run electron:dev
 ```
 
-3. 使用Python代码控制游戏：
-在项目的`python`目录下，使用Python代码控制游戏：
+3. Control the game using Python code:
+In the project's `python` directory, use Python code to control the game:
 ```python
 from maze_controller import controller
 
-# 向前移动
+# Move forward
 controller.move_forward()
 
-# 左转
+# Turn left
 controller.turn_left()
 
-# 右转
+# Turn right
 controller.turn_right()
 
-# 收集蓝宝石
+# Collect blue gem
 controller.collect_blue_gem()
 
-# 收集红宝石
+# Collect red gem
 controller.collect_red_gem()
 
-# 重置游戏
+# Reset game
 controller.reset_game()
 ```
 
-## Python API说明
+## Python API Reference
 
-游戏提供了以下Python API供学习者使用：
+The game provides the following Python APIs for learners:
 
-- `move_forward()`: 向前移动一步
-- `turn_left()`: 向左转90度
-- `turn_right()`: 向右转90度
-- `collect_blue_gem()`: 收集蓝宝石
-- `collect_red_gem()`: 收集红宝石
-- `reset_game()`: 重置游戏
-- `is_on_blue_gem()`: 检查是否在蓝宝石上
-- `is_on_red_gem()`: 检查是否在红宝石上
-- `get_game_state()`: 获取当前游戏状态
+- `move_forward()`: Move one step forward
+- `turn_left()`: Turn 90 degrees left
+- `turn_right()`: Turn 90 degrees right
+- `collect_blue_gem()`: Collect blue gem
+- `collect_red_gem()`: Collect red gem
+- `reset_game()`: Reset the game
+- `is_on_blue_gem()`: Check if standing on a blue gem
+- `is_on_red_gem()`: Check if standing on a red gem
+- `get_game_state()`: Get current game state
 
-## 游戏目标
+## Game Objectives
 
-1. 在迷宫中收集指定数量的蓝宝石和红宝石
-2. 躲避怪物
-3. 找到并到达出口
-4. 使用传送门在不同格子或不同层之间移动
+1. Collect required number of blue and red gems in the maze
+2. Avoid monsters
+3. Find and reach the exit
+4. Use teleport gates to move between different cells or levels
 
-## 编程学习要点
+## Programming Learning Points
 
-通过控制迷宫游戏，学习者可以掌握以下Python编程概念：
+Through controlling the maze game, learners can master the following Python programming concepts:
 
-- 函数调用
-- 条件判断
-- 循环结构
-- 变量使用
-- 逻辑思维
-- API调用
-- JSON数据处理
+- Function calls
+- Conditional statements
+- Loop structures
+- Variable usage
+- Logical thinking
+- API calls
+- JSON data processing
 
-## 开发者工具
+## Developer Tools
 
-游戏还提供了一个内置的地图编辑器，可以：
+The game includes a built-in map editor that allows:
 
-- 创建多层迷宫
-- 设置墙壁位置
-- 放置宝石和怪物
-- 设置传送门
-- 保存和加载地图配置
+- Creating multi-level mazes
+- Setting wall positions
+- Placing gems and monsters
+- Setting up teleport gates
+- Saving and loading map configurations
 
-## 系统要求
+## System Requirements
 
-- 操作系统：Windows/macOS/Linux
-- Node.js 14.0或更高版本
-- Python 3.6或更高版本
-- 显卡需支持WebGL
+- Operating System: Windows/macOS/Linux
+- Node.js 14.0 or higher
+- Python 3.6 or higher
+- Graphics card must support WebGL
 
-## 注意事项
+## Notes
 
-1. 确保游戏客户端运行时，Python代码才能成功控制游戏
-2. 每次移动或转向操作都需要等待动画完成
-3. 在收集宝石时需要确保角色正确位于宝石位置
+1. Ensure the game client is running before executing Python control code
+2. Wait for animations to complete between each movement or rotation operation
+3. Make sure the character is correctly positioned when collecting gems
 
-## 许可证
+## License
 
 MIT License 
