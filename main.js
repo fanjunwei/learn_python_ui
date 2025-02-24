@@ -13,10 +13,6 @@ let mainWindow = null;
 let isQuitting = false;
 let lastFilePath = null;
 
-if (isDev) {
-  const killPort = require('kill-port');
-}
-
 // 发送游戏操作请求
 async function sendGameAction(action, actionType = '操作') {
   try {
@@ -143,16 +139,6 @@ async function cleanup() {
   // 停止服务器
   stopServer();
   
-  // 在开发环境中关闭 Vite 服务器和 Express 服务器
-  if (isDev) {
-    try {
-      await killPort(port);
-      await killPort(serverPort);
-      console.log('所有服务器已关闭');
-    } catch (err) {
-      console.error('关闭服务器失败:', err);
-    }
-  }
 }
 
 function createWindow() {

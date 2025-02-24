@@ -94,7 +94,7 @@ const gameState = ref({
 // Three.js 相关变量
 const container = ref(null)
 let scene, camera, renderer, controls
-let playerModel, playerMixer, playerAnimations = {}, monsterModel, monsterMixer, monsterAnimations = {}, floorTiles = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh, teleportGateMeshes = [], teleportGateModel = null
+let playerModel, playerMixer, playerAnimations = {}, monsterModel, monsterMixer, monsterAnimations = {}, floorTiles = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh, teleportGateMeshes = [], teleportGateModel = null, gemModel = null
 let init = false
 let clock = null
 let targetPlayerPosition = new THREE.Vector3()
@@ -284,8 +284,22 @@ const initThreeJS = async () => {
 
   scene.add(playerModel)
 
+  // 加载宝石模型
+  const gemLoader = new GLTFLoader()
+  try {
+    const gemGltf = await gemLoader.loadAsync(new URL('@/assets/3d_model/gem.glb', import.meta.url).href)
+    gemModel = gemGltf.scene
+    gemModel.scale.set(0.2, 0.2, 0.2)
+  } catch (error) {
+    console.error('加载宝石模型失败:', error)
+  }
+
   // 动画循环
   const animate = () => {
+    // 处理热加载的bug
+    if (!clock) {
+      return
+    }
     requestAnimationFrame(animate)
     const delta = clock.getDelta()
 
@@ -655,56 +669,76 @@ const updateScene = () => {
   redGemMeshes = []
 
   // 创建宝石
-  const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
-  const blueGemMaterial = new THREE.MeshPhysicalMaterial({
-    color: 0x0000ff,
-    metalness: 0.9,
-    roughness: 0.1,
-    envMapIntensity: 1.5,
-    emissive: 0x0000ff,
-    emissiveIntensity: 0.2,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.1
-  })
-  const redGemMaterial = new THREE.MeshPhysicalMaterial({
-    color: 0xff0000,
-    metalness: 0.9,
-    roughness: 0.1,
-    envMapIntensity: 1.5,
-    emissive: 0xff0000,
-    emissiveIntensity: 0.2,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.1
-  })
+  if (gemModel) {
+    // 创建蓝宝石材质
+    const blueMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x0000ff,
+      metalness: 0.9,
+      roughness: 0.1,
+      envMapIntensity: 1.5,
+      emissive: 0x0000ff,
+      emissiveIntensity: 0.2,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1,
+      transparent: true,
+      opacity: 0.8
+    })
 
-  // 放置宝石
-  gameState.value.blueGems.forEach((gem) => {
-    const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
-    let blueGemPosition = {
-      x: gem.x - gameState.value.maze[0].length / 2,
-      y: gem.level * LEVEL_HEIGHT + 0.5,
-      z: gem.y - gameState.value.maze.length / 2
-    }
-    blueMesh.userData.position = blueGemPosition
-    blueMesh.userData.level = gem.level
-    blueMesh.position.copy(blueGemPosition)
-    scene.add(blueMesh)
-    blueGemMeshes.push(blueMesh)
-  })
+    // 创建红宝石材质
+    const redMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xff0000,
+      metalness: 0.9,
+      roughness: 0.1,
+      envMapIntensity: 1.5,
+      emissive: 0xff0000,
+      emissiveIntensity: 0.2,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1,
+      transparent: true,
+      opacity: 0.8
+    })
 
-  gameState.value.redGems.forEach(gem => {
-    const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
-    let redGemPosition = {
-      x: gem.x - gameState.value.maze[0].length / 2,
-      y: gem.level * LEVEL_HEIGHT + 0.5,
-      z: gem.y - gameState.value.maze.length / 2
-    }
-    redMesh.userData.position = redGemPosition
-    redMesh.userData.level = gem.level
-    redMesh.position.copy(redGemPosition)
-    scene.add(redMesh)
-    redGemMeshes.push(redMesh)
-  })
+    // 放置蓝宝石
+    gameState.value.blueGems.forEach((gem) => {
+      const blueMesh = gemModel.clone()
+      blueMesh.traverse((node) => {
+        if (node.isMesh) {
+          node.material = blueMaterial
+        }
+      })
+      let blueGemPosition = {
+        x: gem.x - gameState.value.maze[0].length / 2,
+        y: gem.level * LEVEL_HEIGHT + 0.5,
+        z: gem.y - gameState.value.maze.length / 2
+      }
+      blueMesh.userData.position = blueGemPosition
+      blueMesh.userData.level = gem.level
+      blueMesh.position.copy(blueGemPosition)
+      scene.add(blueMesh)
+      blueGemMeshes.push(blueMesh)
+    })
+
+    // 放置红宝石
+    gameState.value.redGems.forEach(gem => {
+      const redMesh = gemModel.clone()
+      redMesh.traverse((node) => {
+        if (node.isMesh) {
+          node.material = redMaterial
+        }
+      })
+      let redGemPosition = {
+        x: gem.x - gameState.value.maze[0].length / 2,
+        y: gem.level * LEVEL_HEIGHT + 0.5,
+        z: gem.y - gameState.value.maze.length / 2
+      }
+      redMesh.userData.position = redGemPosition
+      redMesh.userData.level = gem.level
+      redMesh.position.copy(redGemPosition)
+      scene.add(redMesh)
+      redGemMeshes.push(redMesh)
+    })
+  }
+
   // 创建出口
   if (exitMesh) {
     disposeObject(exitMesh)
