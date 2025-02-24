@@ -379,27 +379,21 @@ const initThreeJS = async () => {
 
     // 更新宝石动画
     const time = clock.getElapsedTime()
-    blueGemMeshes.forEach((gem, index) => {
-
+    let gems = [...blueGemMeshes, ...redGemMeshes]
+    gems.forEach((gem, index) => {
       let distance = Math.sqrt(Math.pow(gem.position.x - playerModel.position.x, 2) + Math.pow(gem.position.z - playerModel.position.z, 2))
       let y = gem.userData.position.y
       if (distance < 1 && gem.userData.level === gameState.value.currentLevel) {
         y = y + (1 - distance) * 0.7
       }
       gem.position.y = y + Math.sin(time * 2 + index) * 0.1
+      gem.rotation.y = (time + index * 0.1)* (index % 2 === 0 ? 1 : -1)
     })
-    redGemMeshes.forEach((gem, index) => {
-      let distance = Math.sqrt(Math.pow(gem.position.x - playerModel.position.x, 2) + Math.pow(gem.position.z - playerModel.position.z, 2))
-      let y = gem.userData.position.y
-      if (distance < 1 && gem.userData.level === gameState.value.currentLevel) {
-        y = y + (1 - distance) * 0.7
-      }
-      gem.position.y = y + Math.sin(time * 2 + index + Math.PI) * 0.1
-    })
+
 
     // 更新传送门动画
     teleportGateMeshes.forEach((gate, index) => {
-      gate.rotation.y = time
+      gate.rotation.y = time + index * 0.1
     })
 
     // 处理传送动画
