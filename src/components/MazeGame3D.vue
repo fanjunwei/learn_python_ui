@@ -635,33 +635,6 @@ const updateScene = () => {
       }
     })
 
-    // 创建出口
-    if (exitMesh) {
-      disposeObject(exitMesh)
-      scene.remove(exitMesh)
-    }
-    if (gameState.value.exit) {
-      const exitGeometry = new THREE.BoxGeometry(1, 0.05, 1)
-      const exitMaterial = new THREE.MeshPhysicalMaterial({
-        color: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
-        metalness: 0.7,
-        roughness: 0.3,
-        transparent: true,
-        opacity: 0.7,
-        envMapIntensity: 1.2,
-        emissive: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
-        emissiveIntensity: 0.5,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1
-      })
-      exitMesh = new THREE.Mesh(exitGeometry, exitMaterial)
-      exitMesh.position.set(
-        gameState.value.exit.x - gameState.value.maze[0].length / 2,
-        gameState.value.exit.level * LEVEL_HEIGHT + 0.05,
-        gameState.value.exit.y - gameState.value.maze.length / 2
-      )
-      scene.add(exitMesh)
-    }
 
     // 调整相机位置以适应多层迷宫
     const totalHeight = (gameState.value.levels.length - 1) * LEVEL_HEIGHT
@@ -669,69 +642,96 @@ const updateScene = () => {
     controls.target.set(0, totalHeight / 2, 0)
     controls.update()
   }
-    // 清理并重建宝石
-    blueGemMeshes.forEach(gem => {
-      disposeObject(gem)
-      scene.remove(gem)
-    })
-    redGemMeshes.forEach(gem => {
-      disposeObject(gem)
-      scene.remove(gem)
-    })
-    blueGemMeshes = []
-    redGemMeshes = []
+  // 清理并重建宝石
+  blueGemMeshes.forEach(gem => {
+    disposeObject(gem)
+    scene.remove(gem)
+  })
+  redGemMeshes.forEach(gem => {
+    disposeObject(gem)
+    scene.remove(gem)
+  })
+  blueGemMeshes = []
+  redGemMeshes = []
 
-    // 创建宝石
-    const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
-    const blueGemMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x0000ff,
-      metalness: 0.9,
-      roughness: 0.1,
-      envMapIntensity: 1.5,
-      emissive: 0x0000ff,
-      emissiveIntensity: 0.2,
+  // 创建宝石
+  const gemGeometry = new THREE.SphereGeometry(0.2, 32, 32)
+  const blueGemMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0x0000ff,
+    metalness: 0.9,
+    roughness: 0.1,
+    envMapIntensity: 1.5,
+    emissive: 0x0000ff,
+    emissiveIntensity: 0.2,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.1
+  })
+  const redGemMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0xff0000,
+    metalness: 0.9,
+    roughness: 0.1,
+    envMapIntensity: 1.5,
+    emissive: 0xff0000,
+    emissiveIntensity: 0.2,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.1
+  })
+
+  // 放置宝石
+  gameState.value.blueGems.forEach((gem) => {
+    const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
+    let blueGemPosition = {
+      x: gem.x - gameState.value.maze[0].length / 2,
+      y: gem.level * LEVEL_HEIGHT + 0.5,
+      z: gem.y - gameState.value.maze.length / 2
+    }
+    blueMesh.userData.position = blueGemPosition
+    blueMesh.userData.level = gem.level
+    blueMesh.position.copy(blueGemPosition)
+    scene.add(blueMesh)
+    blueGemMeshes.push(blueMesh)
+  })
+
+  gameState.value.redGems.forEach(gem => {
+    const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
+    let redGemPosition = {
+      x: gem.x - gameState.value.maze[0].length / 2,
+      y: gem.level * LEVEL_HEIGHT + 0.5,
+      z: gem.y - gameState.value.maze.length / 2
+    }
+    redMesh.userData.position = redGemPosition
+    redMesh.userData.level = gem.level
+    redMesh.position.copy(redGemPosition)
+    scene.add(redMesh)
+    redGemMeshes.push(redMesh)
+  })
+  // 创建出口
+  if (exitMesh) {
+    disposeObject(exitMesh)
+    scene.remove(exitMesh)
+  }
+  if (gameState.value.exit) {
+    const exitGeometry = new THREE.BoxGeometry(1, 0.05, 1)
+    const exitMaterial = new THREE.MeshPhysicalMaterial({
+      color: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
+      metalness: 0.7,
+      roughness: 0.3,
+      transparent: true,
+      opacity: 0.7,
+      envMapIntensity: 1.2,
+      emissive: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
+      emissiveIntensity: 0.5,
       clearcoat: 1.0,
       clearcoatRoughness: 0.1
     })
-    const redGemMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xff0000,
-      metalness: 0.9,
-      roughness: 0.1,
-      envMapIntensity: 1.5,
-      emissive: 0xff0000,
-      emissiveIntensity: 0.2,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.1
-    })
-
-    // 放置宝石
-    gameState.value.blueGems.forEach((gem) => {
-      const blueMesh = new THREE.Mesh(gemGeometry, blueGemMaterial)
-      let blueGemPosition = {
-        x: gem.x - gameState.value.maze[0].length / 2,
-        y: gem.level * LEVEL_HEIGHT + 0.5,
-        z: gem.y - gameState.value.maze.length / 2
-      }
-      blueMesh.userData.position = blueGemPosition
-      blueMesh.userData.level = gem.level
-      blueMesh.position.copy(blueGemPosition)
-      scene.add(blueMesh)
-      blueGemMeshes.push(blueMesh)
-    })
-
-    gameState.value.redGems.forEach(gem => {
-      const redMesh = new THREE.Mesh(gemGeometry, redGemMaterial)
-      let redGemPosition = {
-        x: gem.x - gameState.value.maze[0].length / 2,
-        y: gem.level * LEVEL_HEIGHT + 0.5,
-        z: gem.y - gameState.value.maze.length / 2
-      }
-      redMesh.userData.position = redGemPosition
-      redMesh.userData.level = gem.level
-      redMesh.position.copy(redGemPosition)
-      scene.add(redMesh)
-      redGemMeshes.push(redMesh)
-    })
+    exitMesh = new THREE.Mesh(exitGeometry, exitMaterial)
+    exitMesh.position.set(
+      gameState.value.exit.x - gameState.value.maze[0].length / 2,
+      gameState.value.exit.level * LEVEL_HEIGHT + 0.05,
+      gameState.value.exit.y - gameState.value.maze.length / 2
+    )
+    scene.add(exitMesh)
+  }
 }
 
 // 监听窗口大小变化
