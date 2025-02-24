@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electro
 const path = require('path');
 const fs = require('fs');
 const { startServer, stopServer } = require('./server');
-const killPort = require('kill-port');
 const TOML = require('@iarna/toml')
 const fetch = require('node-fetch');
 
@@ -13,6 +12,10 @@ const serverPort = 3000;
 let mainWindow = null;
 let isQuitting = false;
 let lastFilePath = null;
+
+if (isDev) {
+  const killPort = require('kill-port');
+}
 
 // 发送游戏操作请求
 async function sendGameAction(action, actionType = '操作') {
