@@ -1,5 +1,8 @@
+import { tr } from 'element-plus/es/locales.mjs'
 import Base3DModel from './base_3dmodel'
 import { Vector3 } from 'three'
+import * as THREE from 'three'
+import { thumbProps } from 'element-plus'
 
 class Player3DModel extends Base3DModel {
     constructor(scene) {
@@ -7,9 +10,12 @@ class Player3DModel extends Base3DModel {
         this.defaultAnimationName = 'Idle'
         this.fadeOutDuration = 1
         this.fadeOutProgress = this.fadeOutDuration
+        this.teleportDuration = 2
+        this.teleportProgress = this.teleportDuration
+
     }
-    moveTo(x = null, y = null, z = null, rx = null, ry = null, rz = null) {
-        this.moveProgress = 0
+    moveTo(x = null, y = null, z = null, rx = null, ry = null, rz = null, hasAnimation = true) {
+        console.log('moveTo', x, y, z, rx, ry, rz, hasAnimation)
         this.currentPosition = this.model.position.clone()
         this.currentRotation = this.model.rotation.clone()
 
@@ -21,6 +27,16 @@ class Player3DModel extends Base3DModel {
         if (rx !== null) this.targetRotation.x = rx
         if (ry !== null) this.targetRotation.y = ry
         if (rz !== null) this.targetRotation.z = rz
+        console.log('moveTo', this.targetPosition, this.targetRotation)
+        if (!hasAnimation) {
+            this.currentPosition.copy(this.targetPosition)
+            this.currentRotation.copy(this.targetRotation)
+            this.model.position.copy(this.targetPosition)
+            this.model.rotation.copy(this.targetRotation)
+            console.log('moveTo', this.model.position, this.model.rotation)
+        } else {
+            this.moveProgress = 0
+        }
     }
     fadeOut() {
         this.fadeOutProgress = 0
@@ -38,12 +54,14 @@ class Player3DModel extends Base3DModel {
         this.teleportStartPosition = this.model.position.clone()
         this.teleportEndPosition = new Vector3(x, y, z)
         this.teleportProgress = 0
+        this.switchAnimation('Idle')
     }
 
-    updateAnimation(time, deltaTime) {
+    updateAnimation(time, delta) {
         if (this.mixer) {
-            this.mixer.update(deltaTime)
+            this.mixer.update(delta)
         }
+        if (!this.gameState) return
         // 更新移动动画
         let duration
         if (this.gameState.action === 'forward') {
@@ -64,35 +82,32 @@ class Player3DModel extends Base3DModel {
             const t = Math.min(this.moveProgress / duration, 1)
             // 使用缓入缓出的缓动函数
             const easeT = t < 0.5 ? (1 - Math.cos(t * Math.PI)) / 2 : (1 + Math.sin((t - 0.5) * Math.PI)) / 2
-            if (this.model) {
-                // 位置插值
-                this.model.position.lerpVectors(this.currentPosition, this.targetPosition, easeT)
-                // 旋转插值
-                const currentAngle = this.currentRotation
-                const targetAngle = this.targetRotation
-                const angleDiff = ((targetAngle - currentAngle + Math.PI) % (Math.PI * 2)) - Math.PI
-                this.model.rotation.y = currentAngle + angleDiff * easeT
-
-                // 根据动画进度切换动画状态
-                if (t < 0.8) {
-                    if (this.gameState.action === 'forward') {
-                        this.switchAnimation('Walk')
-                    } else if (this.gameState.action === 'turnLeft') {
-                        this.switchAnimation('Walk')
-                    } else if (this.gameState.action === 'turnRight') {
-                        this.switchAnimation('Walk')
-                    } else if (this.gameState.action === 'collect_blue') {
-                        this.switchAnimation('Jump')
-                    } else if (this.gameState.action === 'collect_red') {
-                        this.switchAnimation('Jump')
-                    } else {
-                        this.switchAnimation('Idle')
-                    }
-                } else if (this.gameState.gameOver && this.gameState.success) {
-                    this.switchAnimation('Dance')
+            // 位置插值
+            this.model.position.lerpVectors(this.currentPosition, this.targetPosition, easeT)
+            console.log('updateAnimation model.position', this.model.position)
+            // 旋转插值
+            this.model.rotation.x = THREE.MathUtils.lerp(this.currentRotation.x, this.targetRotation.x, easeT)
+            this.model.rotation.y = THREE.MathUtils.lerp(this.currentRotation.y, this.targetRotation.y, easeT)
+            this.model.rotation.z = THREE.MathUtils.lerp(this.currentRotation.z, this.targetRotation.z, easeT)
+            // 根据动画进度切换动画状态
+            if (t < 0.8) {
+                if (this.gameState.action === 'forward') {
+                    this.switchAnimation('Walk')
+                } else if (this.gameState.action === 'turnLeft') {
+                    this.switchAnimation('Walk')
+                } else if (this.gameState.action === 'turnRight') {
+                    this.switchAnimation('Walk')
+                } else if (this.gameState.action === 'collect_blue') {
+                    this.switchAnimation('Jump')
+                } else if (this.gameState.action === 'collect_red') {
+                    this.switchAnimation('Jump')
                 } else {
                     this.switchAnimation('Idle')
                 }
+            } else if (this.gameState.gameOver && this.gameState.success) {
+                this.switchAnimation('Dance')
+            } else {
+                this.switchAnimation('Idle')
             }
         }
         // 更新淡出动画
@@ -146,9 +161,34 @@ class Player3DModel extends Base3DModel {
         }
     }
     updateScene(gameState) {
-        this.gameState = gameState
-        //
+        super.updateScene(gameState)
+        console.log('class Player3DModel updateScene', this.gameState)
+        this.show()
+        // 处理游戏结束时的渐隐效果
+        let postion = this.mazeToPosition(gameState.playerPosition.x, gameState.playerPosition.y, gameState.currentLevel)
+
+        if (gameState.gameOver) {
+            if (!gameState.success) {
+                this.fadeOut()
+            } else {
+                postion.y += 0.05
+            }
+        }
+        let targetPlayerRotation = -gameState.playerDirection * Math.PI / 2 + Math.PI
+
+        if (gameState.action !== 'teleport') {
+            if (gameState.action === 'reset') {
+                this.switchAnimation('Idle')
+            }
+            this.moveTo(postion.x, postion.y, postion.z, null, targetPlayerRotation, null,
+                gameState.action != 'reset')
+        } else {
+            this.teleportTo(postion.x, postion.y, postion.z)
+        }
+
+        this.addToScene()
     }
+
 }
 
 export default Player3DModel

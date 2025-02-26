@@ -65,6 +65,7 @@ import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils'
 import gsap from 'gsap'
+import Player3DModel from '@/func/player_3dmodel'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -94,66 +95,14 @@ const gameState = ref({
 // Three.js 相关变量
 const container = ref(null)
 let scene, camera, renderer, controls
-let playerModel, playerMixer, playerAnimations = {}, monsterModel, monsterMixer, monsterAnimations = {}, floorTiles = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh, teleportGateMeshes = [], teleportGateModel = null, gemModel = null
+let monsterModel, monsterMixer, monsterAnimations = {}, floorTiles = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh, teleportGateMeshes = [], teleportGateModel = null, gemModel = null
 let init = false
 let clock = null
-let targetPlayerPosition = new THREE.Vector3()
-let targetPlayerRotation = 0
-let currentPlayerPosition = new THREE.Vector3()
-let currentPlayerRotation = 0
-let animationProgress = 0
-const playerFadeOutDuration = 1.0
-let playerFadeOutProgress = playerFadeOutDuration
-let currentAnimation = null
-let isTeleporting = false
-let teleportStartPosition = new THREE.Vector3()
-let teleportEndPosition = new THREE.Vector3()
-let teleportProgress = 0
-const teleportDuration = 2.0
+let playerModel = null
 
 // 添加层级高度常量
 const LEVEL_HEIGHT = 5 // 每层迷宫之间的高度差
 const FLOOR_TILE_HEIGHT = 1 // 地砖高度
-
-// 加载GLB模型
-const loadPlayerModel = async () => {
-  const loader = new GLTFLoader()
-  try {
-    const gltf = await loader.loadAsync(new URL('@/assets/3d_model/player.glb', import.meta.url).href)
-    playerModel = gltf.scene
-    // 调整模型大小和位置
-    playerModel.scale.set(0.5, 0.5, 0.5)
-    playerModel.position.y = 0
-
-    // 设置动画混合器
-    playerMixer = new THREE.AnimationMixer(playerModel)
-
-    // 加载所有动画
-    gltf.animations.forEach(clip => {
-      const action = playerMixer.clipAction(clip)
-      playerAnimations[clip.name] = action
-      console.log('加载动画:', clip.name)
-    })
-
-    // 设置默认动画为待机
-    if (playerAnimations['Idle']) {
-      playerAnimations['Idle'].play()
-      currentAnimation = 'Idle'
-    }
-
-    // 修改玩家模型和怪物模型，使其投射阴影
-    playerModel.traverse((node) => {
-      if (node.isMesh) {
-        node.castShadow = true
-      }
-    })
-
-    return playerModel
-  } catch (error) {
-    console.error('加载模型失败:', error)
-    return null
-  }
-}
 
 // 加载怪物模型
 const loadMonsterModel = async () => {
@@ -209,21 +158,6 @@ const loadTeleportGateModel = async () => {
   }
 }
 
-// 切换动画
-const switchAnimation = (newAnimation) => {
-  if (!playerMixer || !playerAnimations[newAnimation] || currentAnimation === newAnimation) return
-  if (currentAnimation === newAnimation) {
-    return
-  }
-  const fadeTime = 0.5
-  if (currentAnimation && playerAnimations[currentAnimation]) {
-    playerAnimations[currentAnimation].fadeOut(fadeTime)
-  }
-
-  playerAnimations[newAnimation].reset().fadeIn(fadeTime).play()
-  currentAnimation = newAnimation
-}
-
 // 初始化Three.js场景
 const initThreeJS = async () => {
   console.log('初始化Three.js')
@@ -275,14 +209,12 @@ const initThreeJS = async () => {
   directionalLight.shadow.mapSize.height = 1024
   scene.add(directionalLight)
 
-  // 加载玩家模型
-  await loadPlayerModel()
+  playerModel = new Player3DModel(scene)
+  await playerModel.init()
   // 加载怪物模型
   await loadMonsterModel()
   // 加载传送门模型
   await loadTeleportGateModel()
-
-  scene.add(playerModel)
 
   // 加载宝石模型
   const gemLoader = new GLTFLoader()
@@ -302,139 +234,34 @@ const initThreeJS = async () => {
     }
     requestAnimationFrame(animate)
     const delta = clock.getDelta()
+    const time = clock.getElapsedTime()
 
     // 更新控制器
     controls.update()
+    playerModel.updateAnimation(time, delta)
 
-    // 更新动画混合器
-    if (playerMixer) {
-      playerMixer.update(delta)
-    }
     monsterMeshes.forEach(monster => {
       if (monster.userData.mixer) {
         monster.userData.mixer.update(delta)
       }
     })
 
-    // 更新玩家动画
-    let duration
-    if (gameState.value.action === 'forward') {
-      duration = 2
-    } else if (gameState.value.action === 'turnLeft') {
-      duration = 0.5
-    } else if (gameState.value.action === 'turnRight') {
-      duration = 0.5
-    } else if (gameState.value.action === 'collect_blue') {
-      duration = 2
-    } else if (gameState.value.action === 'collect_red') {
-      duration = 2
-    } else {
-      duration = 0.5
-    }
-    if (animationProgress < duration) {
-      animationProgress += delta
-      const t = Math.min(animationProgress / duration, 1)
-      // 使用缓入缓出的缓动函数
-      const easeT = t < 0.5 ? (1 - Math.cos(t * Math.PI)) / 2 : (1 + Math.sin((t - 0.5) * Math.PI)) / 2
-      if (playerModel) {
-        // 位置插值
-        playerModel.position.lerpVectors(currentPlayerPosition, targetPlayerPosition, easeT)
-        // 旋转插值
-        const currentAngle = currentPlayerRotation
-        const targetAngle = targetPlayerRotation
-        const angleDiff = ((targetAngle - currentAngle + Math.PI) % (Math.PI * 2)) - Math.PI
-        playerModel.rotation.y = currentAngle + angleDiff * easeT
-
-        // 根据动画进度切换动画状态
-        if (t < 0.8) {
-          if (gameState.value.action === 'forward') {
-            switchAnimation('Walk')
-          } else if (gameState.value.action === 'turnLeft') {
-            switchAnimation('Walk')
-          } else if (gameState.value.action === 'turnRight') {
-            switchAnimation('Walk')
-          } else if (gameState.value.action === 'collect_blue') {
-            switchAnimation('Jump')
-          } else if (gameState.value.action === 'collect_red') {
-            switchAnimation('Jump')
-          } else {
-            switchAnimation('Idle')
-          }
-        } else if (gameState.value.gameOver && gameState.value.success) {
-          switchAnimation('Dance')
-        } else {
-          switchAnimation('Idle')
-        }
-      }
-    }
-    if (playerFadeOutProgress < playerFadeOutDuration) {
-      playerFadeOutProgress += delta
-      const opacity = 1 - (playerFadeOutProgress / playerFadeOutDuration)
-      playerModel.traverse((node) => {
-        if (node.isMesh) {
-          node.material.opacity = Math.max(0, opacity)
-        }
-      })
-    }
-
     // 更新宝石动画
-    const time = clock.getElapsedTime()
     let gems = [...blueGemMeshes, ...redGemMeshes]
     gems.forEach((gem, index) => {
-      let distance = Math.sqrt(Math.pow(gem.position.x - playerModel.position.x, 2) + Math.pow(gem.position.z - playerModel.position.z, 2))
+      let distance = Math.sqrt(Math.pow(gem.position.x - playerModel.getPosition().x, 2) + Math.pow(gem.position.z - playerModel.getPosition().z, 2))
       let y = gem.userData.position.y
       if (distance < 1 && gem.userData.level === gameState.value.currentLevel) {
         y = y + (1 - distance) * 0.7
       }
       gem.position.y = y + Math.sin(time * 2 + index) * 0.1
-      gem.rotation.y = (time + index * 0.1)* (index % 2 === 0 ? 1 : -1)
+      gem.rotation.y = (time + index * 0.1) * (index % 2 === 0 ? 1 : -1)
     })
-
 
     // 更新传送门动画
     teleportGateMeshes.forEach((gate, index) => {
       gate.rotation.y = time + index * 0.1
     })
-
-    // 处理传送动画
-    if (isTeleporting) {
-      teleportProgress += delta
-      const t = Math.min(teleportProgress / teleportDuration, 1)
-
-      if (t <= 0.5) { // 渐隐阶段
-        const fadeOutT = t / 0.5
-        // 从当前层级高度渐变消失
-        playerModel.position.y = teleportStartPosition.y - fadeOutT * 0.5
-        playerModel.traverse((node) => {
-          if (node.isMesh) {
-            node.material.transparent = true
-            node.material.opacity = 1 - fadeOutT
-          }
-        })
-      } else if (t < 1) { // 渐现阶段
-        const fadeInT = (t - 0.5) / 0.5
-        playerModel.visible = true
-        playerModel.position.copy(teleportEndPosition)
-        // 在目标层级高度渐变出现
-        playerModel.position.y = teleportEndPosition.y + fadeInT * 0.5 - 0.5
-        playerModel.traverse((node) => {
-          if (node.isMesh) {
-            node.material.transparent = true
-            node.material.opacity = fadeInT
-          }
-        })
-      } else { // 传送完成
-        isTeleporting = false
-        playerModel.position.copy(teleportEndPosition)
-        playerModel.traverse((node) => {
-          if (node.isMesh) {
-            node.material.transparent = false
-            node.material.opacity = 1
-          }
-        })
-      }
-    }
-
     renderer.render(scene, camera)
   }
   animate()
@@ -444,7 +271,7 @@ const initThreeJS = async () => {
 // 更新场景
 const updateScene = () => {
   console.log('3D更新场景')
-  if (!init || !playerModel) {
+  if (!init) {
     console.log('skip 3D更新场景')
     return
   }
@@ -465,58 +292,9 @@ const updateScene = () => {
       obj.children.forEach(child => disposeObject(child))
     }
   }
+  playerModel.updateScene(gameState.value)
 
-  playerModel.traverse((node) => {
-    if (node.isMesh) {
-      node.material.transparent = true
-      node.material.opacity = 1
-    }
-  })
-
-  // 处理游戏结束时的渐隐效果
-  let playerPositionY = gameState.value.currentLevel * LEVEL_HEIGHT
-  if (gameState.value.gameOver) {
-    if (!gameState.value.success) {
-      playerFadeOutProgress = 0
-    } else {
-      animationProgress = 0
-      playerPositionY += 0.05
-    }
-  }
-
-  // 设置目标位置和旋转
-  targetPlayerPosition.set(
-    gameState.value.playerPosition.x - gameState.value.maze[0].length / 2,
-    playerPositionY,
-    gameState.value.playerPosition.y - gameState.value.maze.length / 2
-  )
-  targetPlayerRotation = -gameState.value.playerDirection * Math.PI / 2 + Math.PI
-
-  if (gameState.value.action !== 'teleport') {
-    if (gameState.value.action === 'reset') {
-      switchAnimation('Idle')
-      currentPlayerPosition.copy(targetPlayerPosition)
-      playerModel.position.copy(targetPlayerPosition)
-      currentPlayerRotation = targetPlayerRotation
-      playerModel.rotation.y = targetPlayerRotation
-    } else {
-      currentPlayerPosition.copy(playerModel.position)
-      currentPlayerRotation = playerModel.rotation.y
-      animationProgress = 0
-    }
-  } else {
-    teleportStartPosition.copy(playerModel.position)
-    // 处理传送门动画
-    teleportEndPosition.set(
-      gameState.value.playerPosition.x - gameState.value.maze[0].length / 2,
-      gameState.value.currentLevel * LEVEL_HEIGHT,
-      gameState.value.playerPosition.y - gameState.value.maze.length / 2
-    )
-    // 记录传送起始位置
-    isTeleporting = true
-    teleportProgress = 0
-    switchAnimation('Idle')
-  }
+ 
 
   if (gameState.value.action === 'reset') {
     // 清理并重建所有层级的场景对象
@@ -890,9 +668,8 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
 
   // 清理动画混合器
-  if (playerMixer) {
-    playerMixer.stopAllAction()
-    playerMixer.uncacheRoot(playerModel)
+  if (playerModel) {
+    playerModel.dispose()
   }
 
   // 清理所有怪物的动画混合器
@@ -950,11 +727,7 @@ onUnmounted(() => {
     exitMesh = null
   }
 
-  // 清理模型
-  if (playerModel) {
-    disposeObject(playerModel)
-    playerModel = null
-  }
+
   if (monsterModel) {
     disposeObject(monsterModel)
     monsterModel = null
@@ -996,7 +769,6 @@ onUnmounted(() => {
   // 重置所有动画相关变量
   init = false
   animationProgress = 0
-  playerFadeOutProgress = playerFadeOutDuration
   currentAnimation = null
   isTeleporting = false
   teleportProgress = 0
