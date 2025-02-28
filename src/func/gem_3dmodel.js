@@ -4,7 +4,7 @@ import * as THREE from 'three'
 
 class Gem3DModel extends Multi3DModel {
     constructor(scene, playerModel) {
-        super(scene, 0.2, new Vector3(0, 0, 0), '@/assets/3d_model/gem.glb', false)
+        super(scene, 0.2, new Vector3(0, 0, 0), '@/assets/3d_model/gem.glb')
         this.defaultAnimationName = 'Idle'
         this.rotationSpeed = 0.02
         this.playerModel = playerModel

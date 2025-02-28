@@ -4,7 +4,7 @@ import * as THREE from 'three'
 
 class Player3DModel extends Base3DModel {
     constructor(scene) {
-        super(scene, 0.5, new Vector3(0, 0, 0), '@/assets/3d_model/player.glb', false)
+        super(scene, 0.5, new Vector3(0, 0, 0), '@/assets/3d_model/player.glb')
         this.defaultAnimationName = 'Idle'
         this.fadeOutDuration = 1
         this.fadeOutProgress = this.fadeOutDuration

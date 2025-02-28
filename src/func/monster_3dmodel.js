@@ -3,7 +3,7 @@ import { Vector3 } from 'three'
 
 class Monster3DModel extends Multi3DModel {
     constructor(scene) {
-        super(scene, 0.5, new Vector3(0, 0, 0), '@/assets/3d_model/怪物.glb', false)
+        super(scene, 0.5, new Vector3(0, 0, 0), '@/assets/3d_model/怪物.glb')
         this.defaultAnimationName = 'Idle'
     }
 

@@ -76,12 +76,9 @@ class Base3DModel {
   }
 
   initAnimation() {
-    console.log('initAnimation', this.gltf.animations)
-
     if (!this.gltf || this.gltf.animations.length === 0) return
     this.mixer = new THREE.AnimationMixer(this.model)
     this.gltf.animations.forEach(animation => {
-      console.log('initAnimation', animation.name)
       const action = this.mixer.clipAction(animation)
       this.animations[animation.name] = action
     })

@@ -62,13 +62,12 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils'
 import gsap from 'gsap'
 import Player3DModel from '@/func/player_3dmodel'
 import Monster3DModel from '@/func/monster_3dmodel'
 import Gem3DModel from '@/func/gem_3dmodel'
 import Teleport3DModel from '@/func/teleport_3dmodel'
+import FloorTile3DModel from '@/func/floortile_3dmodel'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -98,14 +97,14 @@ const gameState = ref({
 // Three.js 相关变量
 const container = ref(null)
 let scene, camera, renderer, controls
-let monsterModel, monsterMixer, monsterAnimations = {}, floorTiles = [], blueGemMeshes = [], redGemMeshes = [], monsterMeshes = [], exitMesh, teleportGateMeshes = [], teleportGateModel = null, gemModel = null
+let monsterModel, exitMesh, teleportGateModel = null, gemModel = null
+let floorTileModel = null
 let init = false
 let clock = null
 let playerModel = null
 
 // 添加层级高度常量
 const LEVEL_HEIGHT = 5 // 每层迷宫之间的高度差
-const FLOOR_TILE_HEIGHT = 1 // 地砖高度
 
 // 初始化3D场景
 const initThreeJS = async () => {
@@ -160,15 +159,14 @@ const initThreeJS = async () => {
 
   playerModel = new Player3DModel(scene)
   await playerModel.init()
-  // 创建怪物模型
   monsterModel = new Monster3DModel(scene)
   await monsterModel.init()
-  // 创建宝石模型
   gemModel = new Gem3DModel(scene, playerModel)
   await gemModel.init()
-  // 创建传送门模型
   teleportGateModel = new Teleport3DModel(scene)
   await teleportGateModel.init()
+  floorTileModel = new FloorTile3DModel(scene)
+  await floorTileModel.init()
 
 
   // 动画循环
@@ -183,14 +181,9 @@ const initThreeJS = async () => {
 
     // 更新控制器
     controls.update()
-    // 更新玩家动画
     playerModel.updateAnimation(time, delta)
-
-    // 更新怪物动画
     monsterModel.updateAnimation(time, delta)
-
     gemModel.updateAnimation(time, delta)
-
     teleportGateModel.updateAnimation(time, delta)
     renderer.render(scene, camera)
   }
@@ -201,56 +194,12 @@ const initThreeJS = async () => {
 const updateScene = () => {
   if (!init) return
 
-  // 更新玩家
   playerModel.updateScene(gameState.value)
-
-  // 更新怪物
   monsterModel.updateScene(gameState.value)
-
-  // 更新宝石
   gemModel.updateScene(gameState.value)
-
-  // 更新传送门
   teleportGateModel.updateScene(gameState.value)
+  floorTileModel.updateScene(gameState.value)
   if (gameState.value.action === 'reset') {
-    floorTiles.forEach(floorTile => {
-      disposeObject(floorTile)
-      scene.remove(floorTile)
-    })
-    floorTiles = []
-
-    // 为每一层创建地砖
-    gameState.value.levels.forEach((level, levelIndex) => {
-      const levelY = levelIndex * LEVEL_HEIGHT
-      const floorTileGeometry = new THREE.BoxGeometry(0.99, FLOOR_TILE_HEIGHT, 0.99)
-      const floorTileMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xffffb5,
-        metalness: 0.9,
-        roughness: 0.1,
-        envMapIntensity: 1.5,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1,
-        reflectivity: 1.0
-      })
-
-      // 创建地砖
-      level.maze.forEach((row, z) => {
-        row.forEach((cell, x) => {
-          if (cell.walkable) {
-            const floorTile = new THREE.Mesh(floorTileGeometry, floorTileMaterial)
-            floorTile.position.set(
-              x - level.maze[0].length / 2,
-              levelY - FLOOR_TILE_HEIGHT / 2,
-              z - level.maze.length / 2
-            )
-            floorTile.castShadow = true
-            floorTile.receiveShadow = true
-            scene.add(floorTile)
-            floorTiles.push(floorTile)
-          }
-        })
-      })
-    })
     // 调整相机位置以适应多层迷宫
     const totalHeight = (gameState.value.levels.length - 1) * LEVEL_HEIGHT
     camera.position.set(5, totalHeight + 5, 5)
@@ -415,18 +364,20 @@ onUnmounted(() => {
   ipcRenderer.removeListener('renderGameState', handleRenderGameState)
   window.removeEventListener('resize', handleResize)
 
-  // 清理动画混合器
+
   if (playerModel) {
     playerModel.dispose()
   }
+  if (gemModel) {
+    gemModel.dispose()
+  }
+  if (teleportGateModel) {
+    teleportGateModel.dispose()
+  }
+  if (monsterModel) {
+    monsterModel.dispose()
+  }
 
-  // 清理所有怪物的动画混合器
-  monsterMeshes.forEach(monster => {
-    if (monster.userData.mixer) {
-      monster.userData.mixer.stopAllAction()
-      monster.userData.mixer.uncacheRoot(monster)
-    }
-  })
 
   // 清理所有材质和几何体
   const disposeObject = (obj) => {
@@ -451,39 +402,12 @@ onUnmounted(() => {
     scene.clear()
   }
 
-  // 清理地砖
-  floorTiles.forEach(floorTile => disposeObject(floorTile))
-  floorTiles = []
-
-  // 清理宝石
-  blueGemMeshes.forEach(gem => disposeObject(gem))
-  redGemMeshes.forEach(gem => disposeObject(gem))
-  blueGemMeshes = []
-  redGemMeshes = []
-
-  // 清理怪物
-  monsterMeshes.forEach(monster => disposeObject(monster))
-  monsterMeshes = []
-
-  // 清理传送门
-  teleportGateMeshes.forEach(gate => disposeObject(gate))
-  teleportGateMeshes = []
-
   // 清理出口
   if (exitMesh) {
     disposeObject(exitMesh)
     exitMesh = null
   }
 
-
-  if (monsterModel) {
-    disposeObject(monsterModel)
-    monsterModel = null
-  }
-  if (teleportGateModel) {
-    disposeObject(teleportGateModel)
-    teleportGateModel = null
-  }
 
   // 清理渲染器
   if (renderer) {
