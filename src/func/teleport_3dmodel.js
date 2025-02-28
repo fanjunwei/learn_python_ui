@@ -4,7 +4,7 @@ import * as THREE from 'three'
 
 class Teleport3DModel extends Multi3DModel {
     constructor(scene) {
-        super(scene, 0.5, new Vector3(0, 0, 0), '@/assets/3d_model/传送门.glb')
+        super(scene, 0.5, new Vector3(0, 0, 0), '@/assets/3d_model/teleport.glb')
     }
     updateScene(gameState) {
         super.updateScene(gameState)
