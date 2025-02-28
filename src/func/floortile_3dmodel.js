@@ -6,25 +6,8 @@ const FLOOR_TILE_HEIGHT = 1
 
 class FloorTile3DModel extends Multi3DModel {
     constructor(scene) {
-        super(scene, 1, new Vector3(0, 0, 0), null)
+        super(scene, 1, new Vector3(0, 0, 0), '@/assets/3d_model/floortile.glb')
     }
-    async createModel() {
-        const floorTileGeometry = new THREE.BoxGeometry(0.99, FLOOR_TILE_HEIGHT, 0.99)
-        const floorTileMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0xffffb5,
-            metalness: 0.9,
-            roughness: 0.1,
-            envMapIntensity: 1.5,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.1,
-            reflectivity: 1.0
-        })
-        const floorTile = new THREE.Mesh(floorTileGeometry, floorTileMaterial)
-        floorTile.castShadow = true
-        floorTile.receiveShadow = true
-        return floorTile
-    }
-
     updateScene(gameState) {
         super.updateScene(gameState)
         if (this.gameState.action === 'reset') {
@@ -35,10 +18,10 @@ class FloorTile3DModel extends Multi3DModel {
                 level.maze.forEach((row, y) => {
                     row.forEach((cell, x) => {
                         let key = `${x}-${y}-${levelIndex}`
-                        if (cell.walkable) {
+                        if (true) {
                             const subModel = this.getAndEnableSubModel(key)
                             let position = this.mazeToPosition(x, y, levelIndex)
-                            position.y = position.y - FLOOR_TILE_HEIGHT / 2
+                            // position.y = position.y - FLOOR_TILE_HEIGHT / 2
                             subModel.model.position.copy(position)
                         }
                     })

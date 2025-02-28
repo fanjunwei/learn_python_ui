@@ -69,6 +69,7 @@ import Gem3DModel from '@/func/gem_3dmodel'
 import Teleport3DModel from '@/func/teleport_3dmodel'
 import FloorTile3DModel from '@/func/floortile_3dmodel'
 import Exit3DModel from '@/func/exit_3dmodel'
+import Tree3DModel from '@/func/tree_3dmodel'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -106,6 +107,7 @@ let exitModel = null
 let init = false
 let clock = null
 let playerModel = null
+let treeModel = null
 
 // 添加层级高度常量
 const LEVEL_HEIGHT = 5 // 每层迷宫之间的高度差
@@ -173,6 +175,8 @@ const initThreeJS = async () => {
   await floorTileModel.init()
   exitModel = new Exit3DModel(scene)
   await exitModel.init()
+  treeModel = new Tree3DModel(scene)
+  await treeModel.init()
 
   // 动画循环
   const animate = () => {
@@ -190,6 +194,7 @@ const initThreeJS = async () => {
     monsterModel.updateAnimation(time, delta)
     gemModel.updateAnimation(time, delta)
     teleportGateModel.updateAnimation(time, delta)
+    treeModel.updateAnimation(time, delta)
     renderer.render(scene, camera)
   }
   animate()
@@ -205,6 +210,7 @@ const updateScene = () => {
   teleportGateModel.updateScene(gameState.value)
   floorTileModel.updateScene(gameState.value)
   exitModel.updateScene(gameState.value)
+  treeModel.updateScene(gameState.value)
   if (gameState.value.action === 'reset') {
     // 调整相机位置以适应多层迷宫
     const totalHeight = (gameState.value.levels.length - 1) * LEVEL_HEIGHT
@@ -359,6 +365,9 @@ onUnmounted(() => {
   }
   if (monsterModel) {
     monsterModel.dispose()
+  }
+  if (treeModel) {
+    treeModel.dispose()
   }
   // 清理所有材质和几何体
   const disposeObject = (obj) => {
