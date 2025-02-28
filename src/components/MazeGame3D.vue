@@ -68,6 +68,7 @@ import Monster3DModel from '@/func/monster_3dmodel'
 import Gem3DModel from '@/func/gem_3dmodel'
 import Teleport3DModel from '@/func/teleport_3dmodel'
 import FloorTile3DModel from '@/func/floortile_3dmodel'
+import Exit3DModel from '@/func/exit_3dmodel'
 const electron = window.require('electron')
 const ipcRenderer = electron.ipcRenderer
 
@@ -97,8 +98,11 @@ const gameState = ref({
 // Three.js 相关变量
 const container = ref(null)
 let scene, camera, renderer, controls
-let monsterModel, exitMesh, teleportGateModel = null, gemModel = null
+let monsterModel
+let teleportGateModel = null
+let gemModel = null
 let floorTileModel = null
+let exitModel = null
 let init = false
 let clock = null
 let playerModel = null
@@ -167,7 +171,8 @@ const initThreeJS = async () => {
   await teleportGateModel.init()
   floorTileModel = new FloorTile3DModel(scene)
   await floorTileModel.init()
-
+  exitModel = new Exit3DModel(scene)
+  await exitModel.init()
 
   // 动画循环
   const animate = () => {
@@ -199,6 +204,7 @@ const updateScene = () => {
   gemModel.updateScene(gameState.value)
   teleportGateModel.updateScene(gameState.value)
   floorTileModel.updateScene(gameState.value)
+  exitModel.updateScene(gameState.value)
   if (gameState.value.action === 'reset') {
     // 调整相机位置以适应多层迷宫
     const totalHeight = (gameState.value.levels.length - 1) * LEVEL_HEIGHT
@@ -207,33 +213,7 @@ const updateScene = () => {
     controls.update()
   }
 
-  // 创建出口
-  if (exitMesh) {
-    disposeObject(exitMesh)
-    scene.remove(exitMesh)
-  }
-  if (gameState.value.exit) {
-    const exitGeometry = new THREE.BoxGeometry(1, 0.05, 1)
-    const exitMaterial = new THREE.MeshPhysicalMaterial({
-      color: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
-      metalness: 0.7,
-      roughness: 0.3,
-      transparent: true,
-      opacity: 0.7,
-      envMapIntensity: 1.2,
-      emissive: gameState.value.exitOpen ? 0x00ff00 : 0xff0000,
-      emissiveIntensity: 0.5,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.1
-    })
-    exitMesh = new THREE.Mesh(exitGeometry, exitMaterial)
-    exitMesh.position.set(
-      gameState.value.exit.x - gameState.value.maze[0].length / 2,
-      gameState.value.exit.level * LEVEL_HEIGHT + 0.05,
-      gameState.value.exit.y - gameState.value.maze.length / 2
-    )
-    scene.add(exitMesh)
-  }
+
 }
 
 
@@ -368,6 +348,9 @@ onUnmounted(() => {
   if (playerModel) {
     playerModel.dispose()
   }
+  if (exitModel) {
+    exitModel.dispose()
+  }
   if (gemModel) {
     gemModel.dispose()
   }
@@ -377,8 +360,6 @@ onUnmounted(() => {
   if (monsterModel) {
     monsterModel.dispose()
   }
-
-
   // 清理所有材质和几何体
   const disposeObject = (obj) => {
     if (obj.geometry) {
@@ -401,13 +382,6 @@ onUnmounted(() => {
     scene.traverse(disposeObject)
     scene.clear()
   }
-
-  // 清理出口
-  if (exitMesh) {
-    disposeObject(exitMesh)
-    exitMesh = null
-  }
-
 
   // 清理渲染器
   if (renderer) {
@@ -437,11 +411,7 @@ onUnmounted(() => {
   if (clock) {
     clock = null
   }
-
-  // 重置所有动画相关变量
   init = false
-
-  console.log('3D资源清理完成')
 })
 </script>
 

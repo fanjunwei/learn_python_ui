@@ -124,9 +124,13 @@ class Base3DModel {
     this.inited = false
   }
   mazeToPosition(x, y, level) {
-    return new Vector3(x - this.gameState.maze[0].length / 2,
+    // return new Vector3(x - this.gameState.maze[0].length / 2,
+    //   level * Base3DModel.LEVEL_HEIGHT,
+    //   y - this.gameState.maze.length / 2,
+    // )
+    return new Vector3(x,
       level * Base3DModel.LEVEL_HEIGHT,
-      y - this.gameState.maze.length / 2,
+      y,
     )
   }
 }
@@ -168,21 +172,17 @@ class Multi3DModel extends Base3DModel {
     super(scene, scale, position, glbPath, true)
     this.sub_models = {}
   }
+  getNewSubModel() {
+      let model = SkeletonUtils.clone(this.model)
+      return model
+  }
   getAndEnableSubModel(key) {
     if (this.sub_models[key]) {
       this.sub_models[key].enabled = true
       this.sub_models[key].is_new = false
       return this.sub_models[key]
     } else {
-      let model = SkeletonUtils.clone(this.model)
-      // const mixer = new THREE.AnimationMixer(model)
-      // model.mixer = mixer
-
-      // Object.entries(this.animations).forEach(([name, originalAction]) => {
-      //   const clip = originalAction.getClip()
-      //   const action = mixer.clipAction(clip)
-      //   this.animations[name] = action
-      // })
+      let model = this.getNewSubModel()
       let subModel = new Sub3DModel(model, key, this.animations)
       this.sub_models[key] = subModel
       subModel.is_new = true
