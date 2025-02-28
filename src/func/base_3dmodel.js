@@ -1,10 +1,29 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { Vector3 } from 'three'
 import * as THREE from 'three'
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils'
 let glbloader = new GLTFLoader()
+function disposeObject(obj) {
+  if (obj.geometry) {
+    obj.geometry.dispose()
+  }
+  if (obj.material) {
+    if (Array.isArray(obj.material)) {
+      obj.material.forEach(material => material.dispose())
+    } else {
+      obj.material.dispose()
+    }
+  }
+  if (obj.children) {
+    obj.children.forEach(child => disposeObject(child))
+  }
+}
 class Base3DModel {
   static LEVEL_HEIGHT = 5
   constructor(scene, scale = 1, position = new Vector3(0, 0, 0), glbPath = null, multiply = false) {
+    if (!scene) {
+      return
+    }
     this.scene = scene
     this.scale = scale
     this.position = position
@@ -27,9 +46,6 @@ class Base3DModel {
         node.castShadow = true
       }
     })
-    if (!this.multiply) {
-      // this.addToScene()
-    }
     this.initAnimation()
     this.inited = true
   }
@@ -101,35 +117,119 @@ class Base3DModel {
     this.animations[newAnimation].reset().fadeIn(fadeTime).play()
     this.currentAnimation = newAnimation
   }
-  disposeObject(obj) {
-    if (obj.geometry) {
-      obj.geometry.dispose()
+
+  dispose() {
+    if (this.mixer) {
+      this.mixer.stopAllAction()
+      this.mixer.uncacheRoot(this.model)
     }
-    if (obj.material) {
-      if (Array.isArray(obj.material)) {
-        obj.material.forEach(material => material.dispose())
-      } else {
-        obj.material.dispose()
-      }
-    }
-    if (obj.children) {
-      obj.children.forEach(child => this.disposeObject(child))
-    }
+    disposeObject(this.model)
+    this.inited = false
+  }
+  mazeToPosition(x, y, level) {
+    return new Vector3(x - this.gameState.maze[0].length / 2,
+      level * Base3DModel.LEVEL_HEIGHT,
+      y - this.gameState.maze.length / 2,
+    )
+  }
+}
+
+class Sub3DModel extends Base3DModel {
+  constructor(model, key, animations = {}) {
+    super()
+    this.model = model
+    this.key = key
+    this.enabled = true
+    this.addedToScene = false
+    this.mixer = null
+    this.animations = {}
+    this.userData = {}
+    this.initAnimation(animations)
   }
   dispose() {
     if (this.mixer) {
       this.mixer.stopAllAction()
       this.mixer.uncacheRoot(this.model)
     }
-    this.disposeObject(this.model)
-    this.inited = false
+    disposeObject(this.model)
   }
-  mazeToPosition(x, y, level) {
-    return new Vector3(x - this.gameState.maze[0].length / 2,
-      level * Base3DModel.LEVEL_HEIGHT,
-       y - this.gameState.maze.length / 2,
-      )
+  initAnimation(animations) {
+    if (!animations || Object.keys(animations).length === 0) return
+    this.mixer = new THREE.AnimationMixer(this.model)
+    Object.entries(animations).forEach(([name, originalAction]) => {
+      const clip = originalAction.getClip()
+      const action = this.mixer.clipAction(clip)
+      this.animations[name] = action
+    })
+    if (this.defaultAnimationName) {
+      this.switchAnimation(this.defaultAnimationName)
+    }
   }
 }
+class Multi3DModel extends Base3DModel {
+  constructor(scene, scale = 1, position = new Vector3(0, 0, 0), glbPath = null) {
+    super(scene, scale, position, glbPath, true)
+    this.sub_models = {}
+  }
+  getAndEnableSubModel(key) {
+    if (this.sub_models[key]) {
+      this.sub_models[key].enabled = true
+      this.sub_models[key].is_new = false
+      return this.sub_models[key]
+    } else {
+      let model = SkeletonUtils.clone(this.model)
+      // const mixer = new THREE.AnimationMixer(model)
+      // model.mixer = mixer
 
-export default Base3DModel
+      // Object.entries(this.animations).forEach(([name, originalAction]) => {
+      //   const clip = originalAction.getClip()
+      //   const action = mixer.clipAction(clip)
+      //   this.animations[name] = action
+      // })
+      let subModel = new Sub3DModel(model, key, this.animations)
+      this.sub_models[key] = subModel
+      subModel.is_new = true
+      return subModel
+    }
+  }
+  getEnabledSubModels() {
+    return Object.values(this.sub_models).filter(model => model.enabled)
+  }
+  disableAllSubModels() {
+    Object.values(this.sub_models).forEach(model => {
+      model.enabled = false
+    })
+  }
+  updateSubModelsToScene() {
+    Object.values(this.sub_models).forEach(model => {
+      if (model.enabled) {
+        if (!model.addedToScene) {
+          this.scene.add(model.model)
+          model.addedToScene = true
+        }
+      } else {
+        if (model.addedToScene) {
+          this.scene.remove(model.model)
+          model.addedToScene = false
+        }
+      }
+    })
+  }
+  switchSubModelAnimation(key, animationName) {
+    if (!this.sub_models[key]) return
+    this.sub_models[key].switchAnimation(animationName)
+  }
+  clearSubModels() {
+    Object.values(this.sub_models).forEach(model => {
+      model.dispose()
+    })
+    this.sub_models = {}
+  }
+  dispose() {
+    this.clearSubModels()
+    super.dispose()
+  }
+
+}
+
+export { Base3DModel, Multi3DModel }

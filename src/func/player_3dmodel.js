@@ -1,8 +1,6 @@
-import { tr } from 'element-plus/es/locales.mjs'
-import Base3DModel from './base_3dmodel'
+import { Base3DModel } from './base_3dmodel'
 import { Vector3 } from 'three'
 import * as THREE from 'three'
-import { thumbProps } from 'element-plus'
 
 class Player3DModel extends Base3DModel {
     constructor(scene) {
