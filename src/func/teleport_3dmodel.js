@@ -9,18 +9,15 @@ class Teleport3DModel extends Multi3DModel {
     updateScene(gameState) {
         super.updateScene(gameState)
         this.disableAllSubModels()
-        console.log('teleport gates',this.gameState.teleportGates)
         this.gameState.teleportGates.forEach((teleportGroup, groupIndex) => {
-            teleportGroup.forEach((gate, index) => {
-            console.log('teleport gate',gate)
+            teleportGroup.forEach((gate) => {
             let x = gate.x
             let y = gate.y
             let level = gate.level
             let key = `${x}-${y}-${level}`
             const newModel = this.getAndEnableSubModel(key)
-            console.log('teleport newModel',key, newModel)
             if (newModel.is_new) {
-                const hue = (index * 50) % 360
+                const hue = (groupIndex * 50) % 360
                 const color = new THREE.Color().setHSL(hue / 360, 0.7, 0.5)
                 newModel.model.traverse((node) => {
                     if (node.isMesh) {

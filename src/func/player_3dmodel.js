@@ -13,7 +13,6 @@ class Player3DModel extends Base3DModel {
 
     }
     moveTo(x = null, y = null, z = null, rx = null, ry = null, rz = null, hasAnimation = true) {
-        console.log('moveTo', x, y, z, rx, ry, rz, hasAnimation)
         this.currentPosition = this.model.position.clone()
         this.currentRotation = this.model.rotation.clone()
 
@@ -25,13 +24,11 @@ class Player3DModel extends Base3DModel {
         if (rx !== null) this.targetRotation.x = rx
         if (ry !== null) this.targetRotation.y = ry
         if (rz !== null) this.targetRotation.z = rz
-        console.log('moveTo', this.targetPosition, this.targetRotation)
         if (!hasAnimation) {
             this.currentPosition.copy(this.targetPosition)
             this.currentRotation.copy(this.targetRotation)
             this.model.position.copy(this.targetPosition)
             this.model.rotation.copy(this.targetRotation)
-            console.log('moveTo', this.model.position, this.model.rotation)
         } else {
             this.moveProgress = 0
         }
@@ -82,7 +79,6 @@ class Player3DModel extends Base3DModel {
             const easeT = t < 0.5 ? (1 - Math.cos(t * Math.PI)) / 2 : (1 + Math.sin((t - 0.5) * Math.PI)) / 2
             // 位置插值
             this.model.position.lerpVectors(this.currentPosition, this.targetPosition, easeT)
-            console.log('updateAnimation model.position', this.model.position)
             // 旋转插值
             this.model.rotation.x = THREE.MathUtils.lerp(this.currentRotation.x, this.targetRotation.x, easeT)
             this.model.rotation.y = THREE.MathUtils.lerp(this.currentRotation.y, this.targetRotation.y, easeT)
@@ -160,7 +156,6 @@ class Player3DModel extends Base3DModel {
     }
     updateScene(gameState) {
         super.updateScene(gameState)
-        console.log('class Player3DModel updateScene', this.gameState)
         this.show()
         // 处理游戏结束时的渐隐效果
         let postion = this.mazeToPosition(gameState.playerPosition.x, gameState.playerPosition.y, gameState.currentLevel)

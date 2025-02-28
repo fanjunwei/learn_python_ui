@@ -20,6 +20,8 @@ class FloorTile3DModel extends Multi3DModel {
             reflectivity: 1.0
         })
         const floorTile = new THREE.Mesh(floorTileGeometry, floorTileMaterial)
+        floorTile.castShadow = true
+        floorTile.receiveShadow = true
         return floorTile
     }
 
@@ -38,8 +40,6 @@ class FloorTile3DModel extends Multi3DModel {
                             let position = this.mazeToPosition(x, y, levelIndex)
                             position.y = position.y - FLOOR_TILE_HEIGHT / 2
                             subModel.model.position.copy(position)
-                            subModel.model.castShadow = true
-                            subModel.model.receiveShadow = true
                         }
                     })
                 })

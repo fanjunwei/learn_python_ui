@@ -362,6 +362,7 @@ onUnmounted(() => {
   }
   // 清理所有材质和几何体
   const disposeObject = (obj) => {
+    if (!obj) return
     if (obj.geometry) {
       obj.geometry.dispose()
     }

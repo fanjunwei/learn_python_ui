@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils'
 let glbloader = new GLTFLoader()
 function disposeObject(obj) {
+  if (!obj) return
   if (obj.geometry) {
     obj.geometry.dispose()
   }
@@ -38,7 +39,6 @@ class Base3DModel {
   async init() {
     this.model = await this.createModel()
     if (!this.model) return
-    console.log('init model', this.model)
     this.model.scale.set(this.scale, this.scale, this.scale)
     this.model.position.set(this.position.x, this.position.y, this.position.z)
     this.model.traverse((node) => {
@@ -51,7 +51,6 @@ class Base3DModel {
   }
   addToScene() {
     if (!this.addedToScene) {
-      console.log('addToScene', this.model)
       this.scene.add(this.model)
       this.addedToScene = true
     }
