@@ -52,18 +52,23 @@ class MazeController:
 
     def convert_config_format(self, toml_config: Dict[str, Any]) -> Dict[str, Any]:
         """将TOML配置转换为游戏所需的格式"""
-        return {
-            "maze": [
-                [{"walkable": cell} for cell in row] for row in toml_config["maze"]
-            ],
-            "start": toml_config["start"],
-            "blueGems": toml_config["blueGems"],
-            "redGems": toml_config["redGems"],
-            "monsters": toml_config["monsters"],
-            "exit": toml_config["exit"],
-            "requiredBlueGems": toml_config["requiredBlueGems"],
-            "requiredRedGems": toml_config["requiredRedGems"],
-        }
+        # 转换多层迷宫配置
+        levels = []
+        for level_config in toml_config["levels"]:
+            level = {
+                "maze": [
+                    [{"walkable": cell} for cell in row] for row in level_config["maze"]
+                ],
+                "start": level_config.get("start"),
+                "blueGems": level_config.get("blueGems", []),
+                "redGems": level_config.get("redGems", []),
+                "monsters": level_config.get("monsters", []),
+                "exit": level_config.get("exit"),
+                "teleportGates": level_config.get("teleportGates", []),
+            }
+            levels.append(level)
+        toml_config["levels"] = levels
+        return toml_config
 
     def get_game_state(self) -> Dict[str, Any]:
         """获取当前游戏状态"""

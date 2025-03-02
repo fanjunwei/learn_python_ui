@@ -1,45 +1,42 @@
 title = "多层迷宫配置"
+teleportGates = [ [ { x = 3, y = 0, level = 0 }, { x = 1, y = 1, level = 0 } ] ]
+requiredBlueGems = 2
+requiredRedGems = 2
 
-# 起点坐标
-start = { x = 0, y = 0, level = 0 }
+[start]
+x = 0
+y = 0
+level = 0
 
-# 终点坐标
-exit = { x = 2, y = 2, level = 1 }
-
-# 所需宝石数量
-requiredBlueGems = 0
-requiredRedGems = 0
-
-# 传送门位置 (每个传送门由两个点组成，分别指向不同层级)
-teleportGates = [
-  [{ x = 2, y = 2, level = 0 }, { x = 0, y = 0, level = 1 }]
-]
-
-# 多层迷宫配置
-[[levels]]
-# 迷宫布局 (1: 可通过, 0: 墙壁)
-maze = [
-  [1, 1, 1],
-  [1, 1, 1],
-  [1, 1, 1],
-]
-
-# 蓝宝石位置
-blueGems = []
-
-# 红宝石位置
-redGems = []
-
-# 怪物位置
-monsters = []
+[exit]
+x = 3
+y = 3
+level = 0
 
 [[levels]]
 maze = [
-  [1, 1, 1],
-  [1, 0, 1],
-  [1, 1, 1],
+  [ 1, 1, 1, 1 ],
+  [ 1, 1, 1, 1 ],
+  [ 1, 1, 1, 1 ],
+  [ 1, 1, 1, 1 ]
 ]
 
-blueGems = []
-redGems = []
-monsters = []
+  [[levels.blueGems]]
+  x = 1
+  y = 0
+
+  [[levels.blueGems]]
+  x = 2
+  y = 0
+
+  [[levels.redGems]]
+  x = 0
+  y = 1
+
+  [[levels.redGems]]
+  x = 0
+  y = 2
+
+  [[levels.monsters]]
+  x = 2
+  y = 1
