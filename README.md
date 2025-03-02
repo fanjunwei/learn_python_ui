@@ -43,8 +43,9 @@ npm run electron:dev
 
 3. Control the game using Python code:
 In the project's `python` directory, use Python code to control the game:
+
 ```python
-from maze_controller import controller
+from python.maze_controller import controller
 
 # Move forward
 controller.move_forward()

@@ -36,7 +36,7 @@ class MazeController:
 
     def load_config(self) -> Dict[str, Any]:
         """加载TOML配置文件"""
-        configs_dir = Path(__file__).parent / "configs"
+        configs_dir = Path(__file__).parent.parent / "configs"
         paths = list(configs_dir.glob("*.toml"))
         paths.sort()
         current_level = self.get_current_level()

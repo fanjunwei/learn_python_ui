@@ -68,14 +68,16 @@ def generate_map_config(index):
     levels = []
     all_used_positions = set()
     teleport_gates = []
-    
+
     # 为每层生成基本配置
     for level in range(level_count):
         width = random.randint(6, 8)
         height = random.randint(6, 8)
         wall_density = random.uniform(0.15, 0.25)
-        
-        level_config, used_positions = generate_level_config(width, height, wall_density, all_used_positions)
+
+        level_config, used_positions = generate_level_config(
+            width, height, wall_density, all_used_positions
+        )
         levels.append(level_config)
         all_used_positions.update(used_positions)
 
@@ -92,20 +94,22 @@ def generate_map_config(index):
     for i in range(level_count - 1):
         current_level = levels[i]
         next_level = levels[i + 1]
-        
+
         # 在当前层找一个传送点
         current_positions = get_valid_positions(current_level["maze"], 1, set())
         current_pos = current_positions[0]
-        
+
         # 在下一层找一个传送点
         next_positions = get_valid_positions(next_level["maze"], 1, set())
         next_pos = next_positions[0]
-        
+
         # 添加传送门
-        teleport_gates.append([
-            {"x": current_pos[0], "y": current_pos[1], "level": i},
-            {"x": next_pos[0], "y": next_pos[1], "level": i + 1}
-        ])
+        teleport_gates.append(
+            [
+                {"x": current_pos[0], "y": current_pos[1], "level": i},
+                {"x": next_pos[0], "y": next_pos[1], "level": i + 1},
+            ]
+        )
 
     # 计算所需宝石总数
     total_blue_gems = sum(len(level["blueGems"]) for level in levels)
@@ -118,7 +122,7 @@ def generate_map_config(index):
         "levels": levels,
         "teleportGates": teleport_gates,
         "requiredBlueGems": total_blue_gems,
-        "requiredRedGems": total_red_gems
+        "requiredRedGems": total_red_gems,
     }
 
     return config

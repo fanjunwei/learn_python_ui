@@ -43,8 +43,9 @@ npm run electron:dev
 
 3. 使用Python代码控制游戏：
 在项目的`python`目录下，使用Python代码控制游戏：
+
 ```python
-from maze_controller import controller
+from python.maze_controller import controller
 
 # 向前移动
 controller.move_forward()

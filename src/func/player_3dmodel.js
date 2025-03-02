@@ -80,9 +80,27 @@ class Player3DModel extends Base3DModel {
             // 位置插值
             this.model.position.lerpVectors(this.currentPosition, this.targetPosition, easeT)
             // 旋转插值
-            this.model.rotation.x = THREE.MathUtils.lerp(this.currentRotation.x, this.targetRotation.x, easeT)
-            this.model.rotation.y = THREE.MathUtils.lerp(this.currentRotation.y, this.targetRotation.y, easeT)
-            this.model.rotation.z = THREE.MathUtils.lerp(this.currentRotation.z, this.targetRotation.z, easeT)
+            const diff_function = (start, end) => {
+                if(start!== end) {
+                    start = start % (Math.PI * 2)
+                    end = end % (Math.PI * 2)
+                    console.log(start, end)
+                    let angleDiff = ((end - start) % (Math.PI * 2))
+                    console.log("angleDiff", angleDiff)
+                    if (Math.abs(angleDiff) > Math.PI) {
+                        angleDiff = ((end - 2 * Math.PI - start) % (Math.PI * 2))
+                        console.log("angleDiff2", angleDiff)
+                    }
+                    console.log("angleDiff3", angleDiff)
+                    let result = start + angleDiff * easeT
+                    return result
+                } else {
+                    return start
+                }
+            }
+            this.model.rotation.x = diff_function(this.currentRotation.x, this.targetRotation.x)
+            this.model.rotation.y = diff_function(this.currentRotation.y, this.targetRotation.y)
+            this.model.rotation.z = diff_function(this.currentRotation.z, this.targetRotation.z)
             // 根据动画进度切换动画状态
             if (t < 0.8) {
                 if (this.gameState.action === 'forward') {

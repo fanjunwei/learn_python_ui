@@ -123,13 +123,9 @@ class Base3DModel {
     this.inited = false
   }
   mazeToPosition(x, y, level) {
-    // return new Vector3(x - this.gameState.maze[0].length / 2,
-    //   level * Base3DModel.LEVEL_HEIGHT,
-    //   y - this.gameState.maze.length / 2,
-    // )
-    return new Vector3(x,
+    return new Vector3(x - this.gameState.maze[0].length / 2,
       level * Base3DModel.LEVEL_HEIGHT,
-      y,
+      y - this.gameState.maze.length / 2,
     )
   }
 }

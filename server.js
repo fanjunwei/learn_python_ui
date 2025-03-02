@@ -93,9 +93,9 @@ const defaultMazeConfig = {
     {
       maze: [
         [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
-        [{ walkable: true }, { walkable: false }, { walkable: true }, { walkable: false }, { walkable: true }],
+        [{ walkable: false }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
         [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
-        [{ walkable: true }, { walkable: false }, { walkable: true }, { walkable: false }, { walkable: true }],
+        [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }],
         [{ walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }, { walkable: true }]
       ],
       blueGems: [{ x: 1, y: 1 }, { x: 3, y: 3 }],
@@ -138,13 +138,20 @@ app.post('/resetGame', async (req, res) => {
   console.log('收到重置游戏请求')
   const config = req.body.config || currentConfig || defaultMazeConfig
   currentConfig = config
+  console.log('重置游戏配置:', config)
 
   // 如果提供了新的配置，保存它
   if (req.body.config) {
     await saveCurrentConfig(config)
   }
 
-  resetGameState(config)
+  let resetSuccess = resetGameState(config)
+  if (!resetSuccess) {
+    res.json({
+      success: false,
+      message: '迷宫配置错误'
+    })
+  }
 
   const renderState = generateRenderState()
   console.log('重置后的游戏状态:', renderState)
@@ -288,6 +295,9 @@ app.post('/move', async (req, res) => {
 
 // 重置游戏状态
 function resetGameState(config) {
+  if (config.levels.length < 0) {
+    return false;
+  }
   gameState.levels = []
   gameState.playerPosition = { ...config.start };
   gameState.currentLevel = config.start.level;
@@ -325,13 +335,18 @@ function resetGameState(config) {
   gameState.playerDirection = 0;
   gameState.gameOver = false;
   gameState.success = false;
+  return true;
 }
 
 // 生成渲染状态
 function generateRenderState() {
+  let maze = gameState.levels[gameState.currentLevel].maze
+  if (gameState.levels && gameState.levels[gameState.currentLevel]) {
+    maze = gameState.levels[gameState.currentLevel].maze;
+  }
   return {
     ...gameState,
-    maze: gameState.levels[gameState.currentLevel].maze,
+    maze: maze,
   };
 }
 
